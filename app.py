@@ -23,9 +23,9 @@ def fallback_window(url):
     try:
         import tkinter as tk
         root = tk.Tk()
-        root.title("Valor Inventory Agent")
+        root.title("Inventory Agent")
         root.geometry("340x130")
-        tk.Label(root, text="Valor Inventory Agent is running.\nKeep this window open. Close it to quit.", pady=14).pack()
+        tk.Label(root, text="Inventory Agent is running.\nKeep this window open. Close it to quit.", pady=14).pack()
         tk.Button(root, text="Open dashboard", command=lambda: webbrowser.open(url)).pack()
         root.mainloop()
     except Exception:
@@ -58,7 +58,7 @@ def main():
             webview.settings["ALLOW_DOWNLOADS"] = True
         except Exception:
             pass
-        webview.create_window("Valor Inventory Agent", url, width=1280, height=820, min_size=(900, 600))
+        webview.create_window("Inventory Agent", url, width=1280, height=820, min_size=(900, 600))
         webview.start()
     except Exception:
         _log("native window failed:\n" + traceback.format_exc())

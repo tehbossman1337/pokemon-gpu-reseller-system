@@ -190,7 +190,7 @@ def _fx(c, code):
 
 ITEM_COLS = ["sku", "category", "name", "pokemon_set", "card_no", "condition", "grading", "qty", "added_by",
              "purchase_date", "purchase_price", "purchase_source", "listing_platform", "listed_price", "currency", "market_price",
-             "location", "notes"]
+             "location", "notes", "barcode"]
 
 
 def _clean_item(c, d, old=None):
@@ -223,8 +223,12 @@ def _clean_item(c, d, old=None):
     out = {"category": cat, "name": name, "qty": qty, "purchase_price": pp, "listed_price": lp, "purchase_date": pd, "currency": cur,
            "market_price": max(0.0, num(d.get("market_price"), 0))}
     for k in ("pokemon_set", "card_no", "condition", "grading", "added_by", "purchase_source", "listing_platform",
-              "location", "notes"):
+              "location", "notes", "barcode"):
         out[k] = str(d.get(k) or "").strip()
+    if out["barcode"]:
+        dup = c.execute("SELECT sku FROM items WHERE barcode=? AND id<>?", (out["barcode"], old["id"] if old else -1)).fetchone()
+        if dup:
+            raise ValueError(f"Barcode {out['barcode']} already belongs to {dup['sku']}")
     out["sku"] = sku or (old["sku"] if old else next_sku(c, cat))
     return out
 
@@ -552,37 +556,52 @@ def log_scan(c, action, sku, result):
     c.commit()
 
 
+SKU_RE = re.compile(r"^[A-Z]{2,4}-\d{1,6}$")
+
+
+def _find_scanned(c, code):
+    """A scan can be our own SKU label or the product's printed barcode (UPC/EAN/QR text)."""
+    it = c.execute("SELECT * FROM items WHERE sku=?", (code.upper(),)).fetchone()
+    if not it:
+        it = c.execute("SELECT * FROM items WHERE barcode=? AND barcode<>''", (code,)).fetchone()
+    return it
+
+
 @locked
 def scan(c, mode, sku, sold_by=""):
-    sku = (sku or "").strip().upper()
-    if not sku:
+    code = (sku or "").strip()
+    if not code:
         raise ValueError("Nothing scanned")
+    it = _find_scanned(c, code)
     if mode == "receive":
-        it = c.execute("SELECT * FROM items WHERE sku=?", (sku,)).fetchone()
         if it:
             c.execute("UPDATE items SET qty=qty+1, updated_at=? WHERE id=?", (now(), it["id"]))
             c.commit()
-            log_scan(c, "Receive", sku, f"Added 1 more to existing item (now {it['qty'] + 1})")
-            return {"id": it["id"], "created": False, "message": f"{sku}: quantity is now {it['qty'] + 1}"}
-        cat = "Graphics Card" if sku.startswith("GC") else "Pokemon Card"
-        iid = c.execute("INSERT INTO items(sku,category,name,qty,purchase_date,created_at,updated_at) VALUES(?,?,?,?,?,?,?)",
-                        (sku, cat, "(new item - fill in details)", 1, today(), now(), now())).lastrowid
+            log_scan(c, "Receive", it["sku"], f"Added 1 more to {it['name']} (now {it['qty'] + 1})")
+            return {"id": it["id"], "sku": it["sku"], "created": False, "message": f"{it['sku']} {it['name']}: quantity is now {it['qty'] + 1}"}
+        if SKU_RE.match(code.upper()):
+            new_sku, barcode, cat = code.upper(), "", ("Graphics Card" if code.upper().startswith("GC") else "Pokemon Card")
+        else:  # a product barcode we haven't seen: make a row and remember the barcode for next time
+            cat, barcode = "Pokemon Card", code
+            new_sku = next_sku(c, cat)
+        iid = c.execute("INSERT INTO items(sku,category,name,qty,purchase_date,barcode,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?)",
+                        (new_sku, cat, "(new item - fill in details)", 1, today(), barcode, now(), now())).lastrowid
         c.commit()
-        log_scan(c, "Receive", sku, "Created new inventory row")
-        return {"id": iid, "created": True, "message": f"{sku}: new inventory row created. Fill in the details."}
+        log_scan(c, "Receive", new_sku, "Created new inventory row" + (f" for barcode {barcode}" if barcode else ""))
+        return {"id": iid, "sku": new_sku, "created": True, "message": f"{new_sku}: new inventory row created. Fill in the details."}
     if mode == "sell":
-        it = next((x for x in list_items(c) if x["sku"] == sku), None)
-        if not it:
-            log_scan(c, "Sell", sku, "ERROR: SKU not found")
-            raise ValueError(f"SKU {sku} isn't in inventory")
-        if it["qty_remaining"] <= 0:
-            log_scan(c, "Sell", sku, "ERROR: none left")
-            raise ValueError(f"{sku} is already sold out")
-        r = save_sale(c, {"sku": sku, "qty": 1, "sale_price": it["listed_price"] or 0, "sale_date": today(), "sold_by": sold_by,
-                          "platform": it["listing_platform"]})
-        log_scan(c, "Sell", sku, "Sale row created" + ("" if it["listed_price"] else " (price still needed)"))
-        return {"sale_id": r["id"], "created": True, "needs_price": not it["listed_price"], "alert": r.get("alert"),
-                "message": f"{sku}: sale logged" + ("" if it["listed_price"] else ". Enter the sale price.")}
+        full = next((x for x in list_items(c) if it and x["sku"] == it["sku"]), None)
+        if not full:
+            log_scan(c, "Sell", code, "ERROR: not found in inventory")
+            raise ValueError(f"{code} isn't in inventory")
+        if full["qty_remaining"] <= 0:
+            log_scan(c, "Sell", full["sku"], "ERROR: none left")
+            raise ValueError(f"{full['sku']} {full['name']} is already sold out")
+        r = save_sale(c, {"sku": full["sku"], "qty": 1, "sale_price": full["listed_price"] or 0, "sale_date": today(), "sold_by": sold_by,
+                          "platform": full["listing_platform"]})
+        log_scan(c, "Sell", full["sku"], "Sale row created" + ("" if full["listed_price"] else " (price still needed)"))
+        return {"sale_id": r["id"], "sku": full["sku"], "created": True, "needs_price": not full["listed_price"], "alert": r.get("alert"),
+                "message": f"{full['sku']} {full['name']}: sale logged" + ("" if full["listed_price"] else ". Enter the sale price.")}
     raise ValueError("Unknown scan mode")
 
 
@@ -594,7 +613,7 @@ def list_scans(c, limit=40):
 EXPORTS = {
     "inventory": (lambda c: list_items(c), ["sku", "category", "name", "pokemon_set", "card_no", "condition", "grading", "qty",
                                             "added_by", "purchase_date", "purchase_price", "purchase_source", "listing_platform",
-                                            "listed_price", "currency", "status", "qty_sold", "qty_remaining", "sale_date", "sale_total",
+                                            "listed_price", "currency", "barcode", "status", "qty_sold", "qty_remaining", "sale_date", "sale_total",
                                             "fees_total", "net_total", "profit", "roi", "days_held", "market_price", "location", "notes"]),
     "sales": (lambda c: list_sales(c), ["sale_id", "sku", "item_name", "sale_date", "sold_by", "platform", "buyer", "sale_price", "ship_charged",
                                         "ship_cost", "fee_pct", "platform_fee", "other_fees", "total_fees", "net", "cost_basis", "profit",

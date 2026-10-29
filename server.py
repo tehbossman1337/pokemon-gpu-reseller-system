@@ -14,6 +14,7 @@ import core
 import mail_sync
 import notify
 import packages
+import phone
 import tracker
 import parsers
 import updater
@@ -30,7 +31,10 @@ except Exception:
 
 
 def exports_dir():
-    d = os.path.join(os.path.expanduser("~"), "Documents", "Valor Inventory Agent Exports")
+    docs = os.path.join(os.path.expanduser("~"), "Documents")
+    d = os.path.join(docs, "Valor Inventory Agent Exports")  # keep using the old folder if you already have files there
+    if not os.path.isdir(d):
+        d = os.path.join(docs, "Inventory Agent Exports")
     os.makedirs(d, exist_ok=True)
     return d
 
@@ -168,6 +172,8 @@ class H(BaseHTTPRequestHandler):
             if u.path == "/api/notify_config":
                 cfg = notify.get_config(c)
                 return self.send({"config": cfg, "kinds": notify.KINDS, "windows": os.name == "nt"})
+            if u.path == "/api/phone":
+                return self.send(phone.status(c))
             if u.path == "/api/scans":
                 return self.send(tracker.list_scans(c))
             if u.path == "/api/review":
@@ -255,7 +261,7 @@ class H(BaseHTTPRequestHandler):
                 return self.send({"ok": True, "config": notify.set_config(c, b)})
             if u.path == "/api/notify_test":
                 cfg = notify.get_config(c)
-                res = notify.send_push(cfg, "Valor Inventory Agent", "Test notification - it works!", force=True)
+                res = notify.send_push(cfg, "Inventory Agent", "Test notification - it works!", force=True)
                 notify.notify(c, "test", "Test notification", "If you can read this, in-app notifications work.", dedupe=None, push=False)
                 return self.send({"ok": True, "results": res})
             if u.path == "/api/items/save":
@@ -287,6 +293,15 @@ class H(BaseHTTPRequestHandler):
                 return self.send({"ok": True})
             if u.path == "/api/currencies/delete":
                 tracker.delete_currency(c, b["code"])
+                return self.send({"ok": True})
+            if u.path == "/api/phone/enable":
+                phone.enable(c, bool(b.get("enabled")))
+                return self.send({"ok": True, **phone.status(c)})
+            if u.path == "/api/phone/token":
+                phone.regenerate(c)
+                return self.send({"ok": True, **phone.status(c)})
+            if u.path == "/api/phone/mode":
+                phone.set_mode(c, b.get("mode"))
                 return self.send({"ok": True})
             if u.path == "/api/scan":
                 return self.send({"ok": True, **tracker.scan(c, b.get("mode"), b.get("sku"), b.get("sold_by", ""))})
@@ -480,10 +495,14 @@ def make_server(port=8765):
 def start_background():
     """Things that keep running while the app is open (package re-checks)."""
     packages.start_poller()
+    try:
+        phone.autostart()
+    except Exception:
+        pass
 
 
 if __name__ == "__main__":
     start_background()
     srv, port = make_server(int(os.environ.get("PORT", 8765)))
-    print(f"Valor Inventory Agent running at http://localhost:{port}")
+    print(f"Inventory Agent running at http://localhost:{port}")
     srv.serve_forever()

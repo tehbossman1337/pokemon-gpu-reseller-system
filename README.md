@@ -1,4 +1,4 @@
-# Valor Inventory Agent
+# Inventory Agent
 
 Inventory, order tracking from iCloud email, and Valor accounts/profiles (import, edit, rejig, export).
 
@@ -13,7 +13,7 @@ Inventory, order tracking from iCloud email, and Valor accounts/profiles (import
    (the installer isn't code-signed).
 
 Your data is kept in `%APPDATA%\ValorInventoryAgent` and survives updates and uninstall. Back it up.
-Exports are saved to `Documents\Valor Inventory Agent Exports`.
+Exports are saved to `Documents\Inventory Agent Exports`.
 
 ## Using it
 - **Accounts / Profiles tabs:** Import Valor file (your Valor exports load unchanged, every field is kept),
@@ -54,3 +54,6 @@ Valor Accounts/Profiles show full shipping and billing addresses. Turn on **Blur
 
 ## Accounts & Profiles layout
 Site rail with counts, stats strip, search/sort, Cards or Table view with paging, credit-card visuals, ship-to/bill-to blocks, selection bar for bulk actions. The Blur option still covers addresses, cards, emails and passwords.
+
+## Scan Station & phone pairing
+Scans match your own SKU labels or a product's printed barcode (stored on the item, so repeat scans are instant). USB/Bluetooth scanners work as-is. "Turn on phone scanning" opens a scan-only page on your Wi-Fi (QR code + secret link); scanner apps that open a URL or type like a keyboard can feed the same box.

@@ -1,5 +1,5 @@
 ; Inno Setup script - builds ValorInventoryAgent-Setup.exe (per-user install, no admin rights needed)
-#define AppName "Valor Inventory Agent"
+#define AppName "Inventory Agent"
 #define AppVer "1.0.0"
 
 [Setup]

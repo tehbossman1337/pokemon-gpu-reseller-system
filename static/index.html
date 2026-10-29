@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Valor Inventory Agent</title>
+<title>Inventory Agent</title>
 <style>
 :root{--bg:#f4f5f7;--card:#fff;--side:#12151b;--sideink:#c8ccd4;--ink:#14171c;--mute:#6b7280;--line:#e5e7eb;--acc:#d62f2f;--ok:#15803d;--warn:#b45309;--blue:#1d4ed8;--soft:rgba(127,127,127,.08)}
 @media (prefers-color-scheme:dark){:root{--bg:#0d0f13;--card:#171a20;--side:#0a0c10;--ink:#eceef2;--mute:#9aa1ad;--line:#272c35;--acc:#ef5350;--ok:#4ade80;--warn:#fbbf24;--blue:#60a5fa}}
@@ -55,6 +55,15 @@ body.priv-on .sens.show,body.priv-on input.sens:focus{filter:none!important;user
 .privbar{display:flex;gap:6px 14px;flex-wrap:wrap;align-items:center;padding:8px 12px;margin-bottom:10px;border:1px solid var(--line);border-radius:10px;background:var(--card)}
 .privbar.on{border-color:var(--blue)}
 
+/* tiles + detail */
+.otile{cursor:pointer;border-left:4px solid var(--blue);transition:transform .08s,box-shadow .08s}.otile:hover{transform:translateY(-1px);box-shadow:0 4px 14px rgba(0,0,0,.18)}
+.otile.st-shipped{border-left-color:var(--warn)}.otile.st-delivered{border-left-color:var(--ok)}.otile.st-cancelled{border-left-color:var(--mute);opacity:.75}.otile.st-exception{border-left-color:var(--acc)}
+.otile .big{font-size:18px;font-weight:600}.crumb{display:flex;gap:10px;align-items:center;margin-bottom:12px;flex-wrap:wrap}
+.stepsL{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin:6px 0}.stepsL div{border-top:5px solid var(--line);padding-top:4px;font-size:12px;color:var(--mute)}.stepsL div.on{border-color:var(--ok);color:var(--ink)}.stepsL div.bad{border-color:var(--acc);color:var(--acc)}
+.carrier{display:inline-block;padding:1px 8px;border-radius:6px;background:var(--ink);color:var(--card);font-size:11px;font-weight:700;letter-spacing:.04em}
+.kv{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px 16px}.kv small{display:block;font-size:11px;color:var(--mute);text-transform:uppercase;letter-spacing:.06em}
+.seg2{display:inline-flex}.seg2 button:first-child{border-radius:8px 0 0 8px}.seg2 button:last-child{border-radius:0 8px 8px 0;margin-left:-1px}
+.scanbig{font-size:22px!important;padding:16px!important}.qrbox{background:#fff;padding:6px;border-radius:8px;display:inline-block;line-height:0}.qrbox svg{width:190px;height:190px}
 /* valor pages */
 .vlayout{display:grid;grid-template-columns:190px 1fr;gap:16px;align-items:start}
 .rail{position:sticky;top:0;display:flex;flex-direction:column;gap:2px;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:6px}
@@ -86,7 +95,7 @@ body.priv-on .sens.show,body.priv-on input.sens:focus{filter:none!important;user
 @media(max-width:900px){.vlayout{grid-template-columns:1fr}.rail{flex-direction:row;overflow:auto;position:static}.rail button{white-space:nowrap}}
 @media(max-width:900px){#app{grid-template-columns:1fr}aside{display:flex;flex-wrap:wrap;gap:4px;padding:8px}aside h6{display:none}aside button{width:auto}.mainwrap{height:auto}.grid2{grid-template-columns:1fr}.ibgrid{grid-template-columns:1fr!important}}
 </style></head><body>
-<div id="app"><aside><div class="logo">Valor <span>Inventory</span> Agent</div><div id="nav"></div></aside>
+<div id="app"><aside><div class="logo">Inventory <span>Agent</span></div><div id="nav"></div></aside>
 <div class="mainwrap"><div id="banner"></div>
 <header><h1 id="title"></h1><span id="syncmsg" class="muted"></span>
 <button class="b p" id="syncbtn">Sync iCloud email</button><button class="b" id="rescanbtn" title="Re-read every email in the look-back window">Re-scan all</button><button class="b" id="ntbtn" onclick="ntToggle(event)">Alerts</button><button class="b" id="privbtn" onclick="PRIV.on=!PRIV.on;savePriv();render()" title="Blur addresses, cards, emails and passwords on screen">Blur: off</button><button class="b" onclick="api('open_exports',{})">Exports folder</button></header>
@@ -106,12 +115,12 @@ function toast(msg,bad){const t=$('#toast');t.textContent=msg;t.className=bad?'b
   try{t.showPopover()}catch(e){t.style.display='block'}clearTimeout(toast.t);toast.t=setTimeout(()=>{try{t.hidePopover()}catch(e){}t.style.display=''},bad?6000:3500)}
 const NAV=[['Overview',[['dashboard','Dashboard']]],
  ['Business',[['inventory','Inventory'],['sales','Sales'],['receipts','Receipts'],['scan','Scan Station'],['tax','Tax Summary']]],
- ['Orders',[['orders','Orders'],['packages','Packages'],['inbox','Inbox'],['limits','Purchase Limits'],['review','Review']]],
+ ['Orders',[['orders','Orders'],['packages','Packages'],['inbox','Inbox'],['limits','Purchase Limits']]],
  ['Valor AIO',[['accounts','Accounts'],['profiles','Profiles']]],
  ['App',[['settings','Settings'],['updates','Updates'],['reference','Visual Reference']]]];
 const TITLES={packages:'Package tracker',dashboard:'Dashboard',inventory:'Inventory',sales:'Sales',receipts:'Receipts',scan:'Scan Station',tax:'Tax Summary',orders:'Orders',inbox:'Inbox',limits:'Purchase Limits',review:'Review queue',accounts:'Valor Accounts',profiles:'Valor Profiles',settings:'Settings',updates:'Updates',reference:'Visual Reference'};
 const SITES=['Pokemon Center','Target','Walmart','Best Buy','GameStop','Costco',"Sam's Club"];
-let tab='dashboard',data={},filter='',openSites={},L={},TS={settings:{},fees:[],currencies:[]},DASH={},TAX=null,SCANS=[],SC={mode:'receive',sold_by:'',msg:'',bad:false};
+let DET={kind:'',id:0},OV={view:'tiles',f:'all'},tab='dashboard',data={},filter='',openSites={},L={},TS={settings:{},fees:[],currencies:[]},DASH={},TAX=null,SCANS=[],SC={mode:'receive',sold_by:'',msg:'',bad:false};
 let IF={status:'',category:''},NC=null;
 
 async function load(){
@@ -126,10 +135,12 @@ function nav(){
   $('#nav').innerHTML=NAV.map(([g,ts])=>`<h6>${g}</h6>`+ts.map(([k,l])=>`<button class="${k==tab?'on':''}" onclick="go('${k}')">${l}${k=='packages'&&data.pkg&&data.pkg.items&&data.pkg.items.filter(p=>p.active).length?`<span class="badge">${data.pkg.items.filter(p=>p.active).length}</span>`:''}${k=='review'&&data.rev&&data.rev.length?`<span class="badge">${data.rev.length}</span>`:''}${k=='updates'&&UPD.info&&UPD.info.ok&&UPD.info.update?'<span class="badge">new</span>':''}</button>`).join('')).join('');
   $('#title').textContent=TITLES[tab]||'';
 }
-function go(t){tab=t;filter='';if(t=='tax')TAX=null;render();$('main').scrollTop=0}
+function go(t){tab=t;filter='';DET={kind:'',id:0};if(t=='tax')TAX=null;render();$('main').scrollTop=0}
+const SYNCTABS=['orders','inbox','packages','review'];
+function syncVis(){const on=SYNCTABS.includes(tab);['syncbtn','rescanbtn','syncmsg'].forEach(id=>{const e=document.getElementById(id);if(e)e.style.display=on?'':'none'})}
 function render(){
-  nav();
-  const v={packages:vPkg,dashboard:vDash,inventory:vInv,sales:vSal,receipts:vRecs,scan:vScan,tax:vTax,orders:vOrd,inbox:vInbox,limits:vLim,review:vRev,accounts:vAcc,profiles:vProf,settings:vSet,updates:vUpd,reference:vRef}[tab];
+  nav();syncVis();
+  const v={packages:()=>DET.kind=='pkg'?vPkgDetail():vPkg(),dashboard:vDash,inventory:vInv,sales:vSal,receipts:vRecs,scan:vScan,tax:vTax,orders:()=>DET.kind=='order'?vOrdDetail():vOrd(),inbox:vInbox,limits:vLim,review:vRev,accounts:vAcc,profiles:vProf,settings:vSet,updates:vUpd,reference:vRef}[tab];
   const keep=document.activeElement&&document.activeElement.id==='flt'?document.activeElement.selectionStart:null;
   $('#view').innerHTML=v();
   if(keep!==null){const e=$('#flt');if(e){e.focus();e.setSelectionRange(keep,keep)}}
@@ -200,7 +211,7 @@ function invDlg(id,pre){
   ${i('purchase_price','Purchase price (each)',r.purchase_price??0,'number','step=0.01 min=0')}${sel('currency','Currency',L.currencies||['USD'],r.currency||'USD')}
   ${i('purchase_source','Purchased from',r.purchase_source,'text','','l_src')}${i('listing_platform','Listed on',r.listing_platform,'text','','l_plat')}
   ${i('listed_price','Listed price (each)',r.listed_price||'','number','step=0.01 min=0')}${i('market_price','Market price (each)',r.market_price||'','number','step=0.01 min=0')}
-  ${i('location','Location / bin',r.location)}${i('notes','Notes',r.notes)}</div>`
+  ${i('location','Location / bin',r.location)}${i('barcode','Barcode (UPC/EAN — for scanning)',r.barcode,'text','placeholder="scan it here"')}${i('notes','Notes',r.notes)}</div>`
   +(r.id?`<p><button type="button" class="b" onclick="delInv(${r.id})">Delete item</button></p>`:''),
   fd=>api('items/save',{...fd,id:r.id||null}),'wide');
 }
@@ -272,21 +283,46 @@ function csvImport(name){
 }
 
 /* ---------------------------------------------------------- scan station */
+let PH=null;
+function setScanMode(m){SC.mode=m;api('phone/mode',{mode:m});render()}
+async function phLoad(){PH=await api('phone');if(tab=='scan')render()}
+function recentScans(){return mini('<th>Time</th><th>Action</th><th>SKU</th><th>Result</th>',SCANS.map(s=>`<tr><td>${esc((s.ts||'').replace('T',' ').slice(5,16))}</td><td>${esc(s.action)}</td><td>${esc(s.sku)}</td><td class="wrap ${/^ERROR/.test(s.result)?'neg':''}">${esc(s.result)}</td></tr>`).join(''),'Nothing scanned yet.')}
 function vScan(){
-  return `<div class="panels"><div class="panel scanbox"><div class="seg bar"><button class="b ${SC.mode=='receive'?'on':''}" onclick="SC.mode='receive';render()">Receive stock</button><button class="b ${SC.mode=='sell'?'on':''}" onclick="SC.mode='sell';render()">Sell</button>
-  ${SC.mode=='sell'?`<select onchange="SC.sold_by=this.value"><option value="">Sold by…</option>${(L.team||[]).map(x=>`<option ${x==SC.sold_by?'selected':''}>${esc(x)}</option>`).join('')}</select>`:''}</div>
-  <input id="scansku" placeholder="${SC.mode=='receive'?'Scan or type a SKU and press Enter to receive 1':'Scan or type a SKU and press Enter to sell 1'}" autocomplete="off" onkeydown="if(event.key=='Enter')doScan()">
-  <p class="${SC.bad?'neg':'pos'}">${esc(SC.msg)}</p><p class="muted">Receive adds 1 unit to a SKU (or creates a new row for you to fill in). Sell logs a sale of 1 unit at the listed price.</p></div>
-  <div class="panel"><h3>Recent scans</h3>${mini('<th>Time</th><th>Action</th><th>SKU</th><th>Result</th>',SCANS.map(s=>`<tr><td>${esc((s.ts||'').replace('T',' ').slice(5,16))}</td><td>${esc(s.action)}</td><td>${esc(s.sku)}</td><td class="wrap ${/^ERROR/.test(s.result)?'neg':''}">${esc(s.result)}</td></tr>`).join(''),'Nothing scanned yet.')}</div></div>`;
+  if(PH===null)phLoad();
+  const sell=SC.mode=='sell',on=PH&&PH.enabled&&PH.url;
+  return `<div class="panels"><div class="panel scanbox"><div class="seg bar"><button class="b ${!sell?'on':''}" onclick="setScanMode('receive')">Receive stock</button><button class="b ${sell?'on':''}" onclick="setScanMode('sell')">Sell</button>
+  ${sell?`<select onchange="SC.sold_by=this.value"><option value="">Sold by…</option>${(L.team||[]).map(x=>`<option ${x==SC.sold_by?'selected':''}>${esc(x)}</option>`).join('')}</select>`:''}</div>
+  <input id="scansku" class="scanbig" placeholder="Scan a barcode or type a SKU, then Enter" autocomplete="off" autofocus onkeydown="if(event.key=='Enter')doScan()">
+  <p class="${SC.bad?'neg':'pos'}" style="min-height:22px;font-size:15px">${esc(SC.msg)}</p>
+  <p class="muted">${sell?'Sell logs a sale of 1 unit at the listed price.':'Receive adds 1 unit. A barcode we haven\'t seen creates a new item and remembers the barcode, so the next scan is instant.'}
+  Works with any USB / Bluetooth barcode scanner (they type the code and press Enter), and with your phone below.</p></div>
+  <div class="panel"><h3>Recent scans</h3><div id="recent">${recentScans()}</div></div></div>
+  <div class="panel"><h3>Scan with your phone</h3>${on?`<div style="display:flex;gap:20px;flex-wrap:wrap;align-items:flex-start"><div class="qrbox">${PH.qr||''}</div>
+   <div style="flex:1;min-width:260px"><ol style="margin:0 0 8px;padding-left:18px"><li>Connect the phone to the <b>same Wi-Fi</b> as this PC.</li><li>Point the phone camera at the code and open the link.</li><li>Tap Share → <b>Add to Home Screen</b> so it opens like an app.</li><li>Scan with your scanner app, or type/paste codes. Everything lands here instantly.</li></ol>
+   <label>Link (private to you)</label><input readonly style="width:100%" value="${esc(PH.url)}" onfocus="this.select()"><div class="bar" style="margin-top:8px"><button class="b" onclick="pkCopy(${q(PH.url)})">Copy link</button><button class="b" onclick="phToken()">New secret link</button><button class="b" onclick="phEnable(false)">Turn off</button></div>
+   <details><summary class="muted">Use a scanner app that opens a web address</summary><p class="muted" style="margin:6px 0">Set the app's “open URL / web lookup” template to this, with the scanned code at the end:</p><input readonly style="width:100%" value="${esc(PH.scan_url)}" onfocus="this.select()"><p class="muted" style="margin:6px 0">Apps that act like a keyboard (for example <b>Barcode to PC</b>) can simply type into the Scan box above instead.</p></details>
+   <p class="muted" style="margin-bottom:0">Only scanning is reachable from the phone — never your accounts, profiles or sales. Anyone on your Wi-Fi who has the secret link could scan items, so use “New secret link” if it leaks.</p></div></div>`
+   :`<p class="muted" style="margin-top:0">Pair your iPhone or Android with the Scan Station. Turning this on opens a small scan-only page on your home network, protected by a secret link.</p><button class="b p" onclick="phEnable(true)">Turn on phone scanning</button>`}</div>`;
 }
+async function phEnable(on){const r=await api('phone/enable',{enabled:on});if(r.error)return toast(r.error,true);PH=r;render();toast(on?'Phone scanning is on':'Phone scanning is off')}
+async function phToken(){if(!confirm('Make a new secret link? The old link and any phone using it will stop working.'))return;PH=await api('phone/token',{});render()}
 async function doScan(){
-  const el=$('#scansku'),sku=el.value.trim();if(!sku)return;el.value='';
-  const r=await api('scan',{mode:SC.mode,sku,sold_by:SC.sold_by});
+  const el=$('#scansku'),code=el.value.trim();if(!code)return;el.value='';
+  const r=await api('scan',{mode:SC.mode,sku:code,sold_by:SC.sold_by});
   SC.bad=!!r.error;SC.msg=r.error||r.message;
   await load();
   if(!r.error&&r.created&&SC.mode=='receive')invDlg(r.id);
   else if(!r.error&&r.needs_price)saleDlg(r.sale_id);
 }
+let LASTSCAN=0;
+async function scanTick(){
+  if(tab!='scan')return;const r=await api('scans');if(!Array.isArray(r))return;
+  const top=r.length?r[0].id:0;
+  if(LASTSCAN&&top>LASTSCAN){const fresh=r.filter(x=>x.id>LASTSCAN);SCANS=r;const e=$('#recent');if(e)e.innerHTML=recentScans();
+    fresh.slice(0,2).forEach(x=>toast('Scan: '+x.sku+' — '+x.result,/^ERROR/.test(x.result)));if(fresh.some(x=>/Created new/.test(x.result)))load()}
+  LASTSCAN=top;
+}
+setInterval(scanTick,2500);
 
 /* ---------------------------------------------------------- tax */
 async function taxLoad(y){TAX=await api('tax'+(y?'?year='+y:''));if(tab=='tax')render()}
@@ -337,39 +373,59 @@ async function mailSettings(){
 }
 
 /* ---------------------------------------------------------- packages */
-let PK={filter:'active',open:{}};
+let PK={filter:'active',view:'tiles'};
 const PKSTEPS=['Shipped','In transit','Out for delivery','Delivered'];
 const stepIdx=s=>({label_created:0,shipped:0,in_transit:1,exception:1,pickup:2,out_for_delivery:2,delivered:3})[s]??0;
-function ago(ts){if(!ts)return '';const d=new Date(ts.length==10?ts+'T12:00:00':ts);if(isNaN(d))return ts;const m=Math.round((Date.now()-d)/60000);
+function ago(ts){if(!ts)return '';const d=new Date(String(ts).length==10?ts+'T12:00:00':String(ts).replace(' ','T'));if(isNaN(d))return ts;const m=Math.round((Date.now()-d)/60000);
   if(m<1)return 'just now';if(m<60)return m+'m ago';if(m<1440)return Math.round(m/60)+'h ago';return Math.round(m/1440)+'d ago'}
 const pkPill=p=>`<span class="pill ${p.status=='delivered'?'delivered':p.status=='exception'?'cancelled':p.status=='out_for_delivery'||p.status=='pickup'?'shipped':'confirmed'}" style="${p.status=='exception'?'text-decoration:none;color:var(--acc)':''}">${esc(p.label)}</span>`;
+const stClass=p=>p.status=='delivered'?'st-delivered':p.status=='exception'?'st-exception':p.status=='out_for_delivery'||p.status=='pickup'?'st-shipped':'';
+const stepsL=p=>`<div class="stepsL">${PKSTEPS.map((l,k)=>`<div class="${k<=stepIdx(p.status)?(p.status=='exception'&&k==stepIdx(p.status)?'bad':'on'):''}">${l}</div>`).join('')}</div>`;
+function pkgTile(p){
+  return `<div class="pcard otile ${stClass(p)}" onclick="openDet('pkg',${p.id})"><div class="pc-top"><span class="carrier">${esc(p.carrier||'?')}</span><b class="pc-name">${esc(p.retailer||'Package')}</b>${pkPill(p)}</div>
+  <div class="muted" style="font-size:12px">${esc(p.description)||'&nbsp;'}</div>${stepsL(p)}
+  <div style="font-size:13px">${esc(p.detail)||'<span class="muted">Waiting for first update</span>'}</div>
+  <div class="pc-foot" style="justify-content:space-between"><span class="muted" style="font-size:12px">${esc(p.tracking)}</span><span class="muted" style="font-size:12px">${p.eta?'ETA '+esc(p.eta):ago(p.last_change)}</span></div></div>`;
+}
 function vPkg(){
   const P=data.pkg||{items:[],settings:{},state:{}},all=P.items||[],t=filter.toLowerCase();
   const act=all.filter(p=>p.active),prob=all.filter(p=>p.status=='exception'),out=all.filter(p=>p.status=='out_for_delivery'||p.status=='pickup'),del=all.filter(p=>p.status=='delivered');
   const rows=all.filter(p=>(PK.filter=='all'||(PK.filter=='active'&&p.active)||(PK.filter=='delivered'&&p.status=='delivered')||(PK.filter=='problems'&&p.status=='exception'))
     &&(!t||(p.tracking+p.retailer+p.description+p.order_number+p.carrier).toLowerCase().includes(t)));
-  const chip=(k,l,n)=>`<button class="b ${PK.filter==k?'on':''}" onclick="PK.filter='${k}';render()">${l} <span class="muted" style="color:inherit;opacity:.7">${n}</span></button>`;
+  const chip=(k,l,n)=>`<button class="b ${PK.filter==k?'on':''}" onclick="PK.filter='${k}';render()">${l} <span style="opacity:.7">${n}</span></button>`;
   const hasKey=P.settings&&P.settings.track_key;
+  const table=tbl('<th>Package</th><th>Carrier / tracking</th><th>Status</th><th>Last update</th><th>ETA</th><th></th>',rows.map(p=>`<tr style="cursor:pointer" onclick="openDet('pkg',${p.id})"><td class="wrap"><b>${esc(p.retailer||'Package')}</b>${p.order_number?` <span class="muted">#${esc(p.order_number)}</span>`:''}<div class="muted" style="font-size:12px">${esc(p.description)||'&nbsp;'}</div></td>
+  <td>${esc(p.carrier||'Carrier?')}<div class="muted" style="font-size:12px">${esc(p.tracking)}</div></td><td>${stepsBar(p.status)}${pkPill(p)}</td>
+  <td class="wrap" style="min-width:170px">${esc(p.detail)||''}<div class="muted" style="font-size:12px">${esc(p.location)} ${ago(p.last_change)}</div></td><td>${esc(p.eta||'')}</td>
+  <td onclick="event.stopPropagation()"><button class="b" onclick="openUrl(${q(p.url)})">Track ↗</button></td></tr>`).join(''),'Nothing in this view.');
   return `<div class="tiles">${tile('On the way',act.length)}${tile('Out for delivery',out.length)}${tile('Problems',prob.length,prob.length?'neg':'')}${tile('Delivered',del.length)}</div>
   <div class="panel" style="margin-bottom:12px"><b>How it works:</b> when a store email says an order shipped, the tracking number is picked up automatically, linked to the order, and followed until it is delivered. Later emails (out for delivery, delivered, delays) update it${hasKey?', and the package is also checked live every '+P.settings.interval+' minutes':''}.
   ${hasKey?'':'<br><span class="muted">Live tracking is off. Add a free 17TRACK key in Settings → Package tracking to check carriers continuously, even if no email arrives.</span> <button class="b" onclick="go(\'settings\')">Open settings</button>'}
   ${P.state&&P.state.last_run?`<div class="muted" style="margin-top:4px">Last live check ${ago(P.state.last_run)}: ${esc(P.state.last_result)}</div>`:''}</div>
-  <div class="bar">${f()}<div class="chips">${chip('active','On the way',act.length)}${chip('problems','Problems',prob.length)}${chip('delivered','Delivered',del.length)}${chip('all','All',all.length)}</div>
-  <button class="b p" onclick="pkDlg()">+ Add tracking</button><button class="b" onclick="pkRefresh()">Check all now</button></div>
-  ${tbl('<th>Package</th><th>Carrier / tracking</th><th>Status</th><th>Last update</th><th>ETA</th><th></th>',rows.map(p=>`<tr style="cursor:pointer" onclick="PK.open[${p.id}]=!PK.open[${p.id}];render()"><td class="wrap"><b>${esc(p.retailer||'Package')}</b>${p.order_number?` <span class="muted">#${esc(p.order_number)}</span>`:''}<div class="muted" style="font-size:12px">${esc(p.description)||'&nbsp;'}</div></td>
-  <td>${esc(p.carrier||'Carrier?')}<div class="muted" style="font-size:12px">${esc(p.tracking)}</div></td>
-  <td><div class="steps">${[0,1,2,3].map(k=>`<i class="${k<=stepIdx(p.status)?(p.status=='exception'&&k==stepIdx(p.status)?'bad':'on'):''}"></i>`).join('')}</div>${pkPill(p)}</td>
-  <td class="wrap" style="min-width:170px">${esc(p.detail)||''}<div class="muted" style="font-size:12px">${esc(p.location)} ${ago(p.last_change)}</div></td><td>${esc(p.eta||'')}</td>
-  <td onclick="event.stopPropagation()"><button class="b" onclick="openUrl(${q(p.url)})">Track ↗</button> <button class="b" onclick="pkCopy(${q(p.tracking)})">Copy</button> <button class="b" onclick="pkDlg(${p.id})">Edit</button></td></tr>
-  ${PK.open[p.id]?`<tr><td colspan="6" class="wrap" style="background:var(--soft)"><div class="evgrid"><div><b>Shipped</b><br>${esc((p.shipped_at||'').replace('T',' ').slice(0,16))}</div><div><b>Source</b><br>${esc(p.source)}</div><div><b>Last checked</b><br>${p.last_checked?ago(p.last_checked):'never'}</div>${p.delivered_at?`<div><b>Delivered</b><br>${esc(p.delivered_at.replace('T',' ').slice(0,16))}</div>`:''}</div>
-  ${p.error?`<div class="neg" style="margin-top:4px">${esc(p.error)}</div>`:''}${p.notes?`<div style="margin-top:4px">Notes: ${esc(p.notes)}</div>`:''}
-  ${p.events&&p.events.length?`<div class="timeline">${p.events.map(e=>`<div><b>${esc(e.desc)}</b><br><span class="muted">${esc((e.time||'').replace('T',' ').slice(0,16))} ${esc(e.loc)}</span></div>`).join('')}</div>`:'<div class="muted" style="margin-top:4px">No scan history yet.</div>'}
-  <div class="bar" style="margin:8px 0 0"><button class="b" onclick="pkRefresh(${p.id})">Check this one now</button>${p.status!='delivered'?`<button class="b" onclick="pkStatus(${p.id},'delivered')">Mark delivered</button>`:`<button class="b" onclick="pkStatus(${p.id},'in_transit')">Not delivered</button>`}<button class="b" onclick="pkDel(${p.id})">Delete</button></div></td></tr>`:''}`).join(''),
-  all.length?'Nothing in this view.':'No packages yet. They appear automatically when a shipping email arrives — click “Sync iCloud email”, or add one by hand.')}`;
+  <div class="bar">${f()}<div class="chips">${chip('active','On the way',act.length)}${chip('problems','Problems',prob.length)}${chip('delivered','Delivered',del.length)}${chip('all','All',all.length)}</div>${viewToggle(PK)}
+  <button class="b p" onclick="findPackages()" title="Re-read your email for shipping notices and tracking numbers">Find packages in email</button><button class="b" onclick="pkDlg()">+ Add tracking</button><button class="b" onclick="pkRefresh()">Update statuses now</button></div>
+  ${rows.length?(PK.view=='tiles'?`<div class="pgrid">${rows.map(pkgTile).join('')}</div>`:table):`<div class="panel muted">${all.length?'Nothing in this view.':'No packages yet. Click “Find packages in email” to search your email for shipping notices, or add one by hand.'}</div>`}`;
+}
+function vPkgDetail(){
+  const p=(data.pkg.items||[]).find(x=>x.id==DET.id);if(!p){DET={kind:'',id:0};return vPkg()}
+  const o=data.ord.find(x=>x.id==p.order_id||(p.order_number&&x.order_number==p.order_number&&x.retailer==p.retailer));
+  return `<div class="crumb"><button class="b" onclick="closeDet()">← All packages</button><h2 style="margin:0"><span class="carrier">${esc(p.carrier||'?')}</span> ${esc(p.tracking)}</h2>${pkPill(p)}</div>
+  <div class="panel">${stepsL(p)}<div style="font-size:16px;margin:6px 0 2px"><b>${esc(p.detail)||'Waiting for first update'}</b></div><div class="muted">${esc(p.location)} ${p.last_change?'· '+ago(p.last_change):''}</div>
+  ${p.error?`<div class="neg" style="margin-top:6px">${esc(p.error)}</div>`:''}
+  <div class="bar" style="margin:12px 0 0"><button class="b p" onclick="openUrl(${q(p.url)})">Track on carrier site ↗</button><button class="b" onclick="pkCopy(${q(p.tracking)})">Copy number</button><button class="b" onclick="pkRefresh(${p.id})">Check now</button>
+  ${p.status!='delivered'?`<button class="b" onclick="pkStatus(${p.id},'delivered')">Mark delivered</button>`:`<button class="b" onclick="pkStatus(${p.id},'in_transit')">Not delivered</button>`}<button class="b" onclick="pkDlg(${p.id})">Edit</button><button class="b" onclick="pkDel(${p.id})">Delete</button></div></div>
+  <div class="panels"><div class="panel"><h3>Details</h3><div class="kv"><div><small>Store</small>${esc(p.retailer||'—')}</div><div><small>Contents</small>${esc(p.description||'—')}</div><div><small>Order</small>${o?`<a href="#" onclick="DET={kind:'',id:0};tab='orders';openDet('order',${o.id});return false">${esc(o.retailer)} #${esc(o.order_number)}</a>`:(esc(p.order_number)||'—')}</div>
+  <div><small>Shipped</small>${esc((p.shipped_at||'').replace('T',' ').slice(0,16))||'—'}</div><div><small>ETA</small>${esc(p.eta||'—')}</div>${p.delivered_at?`<div><small>Delivered</small>${esc(p.delivered_at.replace('T',' ').slice(0,16))}</div>`:''}
+  <div><small>Found by</small>${esc(p.source)}</div><div><small>Last checked</small>${p.last_checked?ago(p.last_checked):'never'}</div></div>${p.notes?`<p>Notes: ${esc(p.notes)}</p>`:''}</div>
+  <div class="panel"><h3>History</h3>${p.events&&p.events.length?`<div class="timeline">${p.events.map(e=>`<div><b>${esc(e.desc)}</b><br><span class="muted">${esc((e.time||'').replace('T',' ').slice(0,16))} ${esc(e.loc)}</span></div>`).join('')}</div>`:'<p class="muted">No scan history yet. It fills in from carrier emails or live tracking.</p>'}</div></div>`;
+}
+async function findPackages(){
+  const r=await api('sync',{rescan:true});if(r.error&&r.error!='already running')return toast(r.error,true);
+  toast('Searching your email for shipping notices… new packages appear here as they are found.');poll();
 }
 async function pkRefresh(id){const r=await api('packages/refresh',id?{id}:{});if(!r.ok)return toast(r.error||'Could not check',true);toast('Checking with the carrier…');setTimeout(load,4000)}
 async function pkStatus(id,s){const r=await api('packages/status',{id,status:s});if(r.error)return toast(r.error,true);load()}
-async function pkDel(id){if(confirm('Stop tracking this package?')){await api('packages/delete',{id});load()}}
+async function pkDel(id){if(confirm('Stop tracking this package?')){await api('packages/delete',{id});DET={kind:'',id:0};load()}}
 function pkCopy(t){try{navigator.clipboard.writeText(t).then(()=>toast('Copied '+t))}catch(e){toast(t)}}
 function pkDlg(id){
   const r=(data.pkg.items||[]).find(x=>x.id==id)||{};
@@ -442,18 +498,41 @@ function vRef(){
   return `<p class="muted">Quick image searches to help identify sets and eras. Links open in your browser.</p>`+Object.entries(g).map(([k,l])=>`<div class="panel" style="margin-bottom:12px"><h3>${esc(k)}</h3>${mini('<th>Era</th><th>Highlights</th><th></th>',l.map(v=>`<tr><td>${esc(v.era)}</td><td class="wrap">${esc(v.highlights)}</td><td><button class="b" onclick="openUrl(${q(v.url)})">Open images</button></td></tr>`).join(''),'')}</div>`).join('');
 }
 
+const OSTATUS=['confirmed','shipped','delivered','cancelled'];
+const ordPkgs=o=>((data.pkg||{}).items||[]).filter(p=>p.order_id==o.id||(o.order_number&&p.order_number==o.order_number&&p.retailer==o.retailer));
+const stepsBar=st=>`<div class="steps">${[0,1,2,3].map(k=>`<i class="${k<=stepIdx(st)?(st=='exception'&&k==stepIdx(st)?'bad':'on'):''}"></i>`).join('')}</div>`;
+function openDet(kind,id){DET={kind,id};tab=kind=='pkg'?'packages':'orders';render();$('main').scrollTop=0}
+function closeDet(){DET={kind:'',id:0};render()}
+const itemsLine=o=>{const it=o.items||[];if(!it.length)return '<span class="neg">no items read</span>';return it.slice(0,3).map(i=>`${i.qty}× ${esc(i.name)}`).join('<br>')+(it.length>3?`<br><span class="muted">+${it.length-3} more</span>`:'')};
+function viewToggle(obj){return `<span class="seg2"><button class="b ${obj.view=='tiles'?'p':''}" onclick="${obj===OV?'OV':'PK'}.view='tiles';render()">Tiles</button><button class="b ${obj.view=='table'?'p':''}" onclick="${obj===OV?'OV':'PK'}.view='table';render()">Table</button></span>`}
 function vOrd(){
-  const rows=data.ord.filter(r=>(r.retailer+r.order_number+r.items.map(i=>i.name).join()).toLowerCase().includes(filter.toLowerCase()));
-  return `<div class="bar">${f()}<button class="b p" onclick="ordDlg()">+ Manual order</button></div><div class="card"><table>
-  <tr><th>Date</th><th>Retailer</th><th>Order #</th><th>Status</th><th>Items</th><th>Total</th><th>Tracking</th><th></th></tr>
-  ${rows.map(o=>`<tr><td>${esc(o.order_date||'')}</td><td>${esc(o.retailer)}</td><td>${esc(o.order_number)}</td>
-  <td><span class="pill ${o.status}">${o.status}</span>${o.received?' <span class="pill pos">in stock</span>':''}</td>
-  <td class="wrap">${o.items.map(i=>`${i.qty}× ${esc(i.name)}`).join('<br>')||'<span class="neg">no items</span>'}</td>
-  <td>${o.total?money(o.total):''}</td><td>${esc(o.tracking)}</td>
-  <td><select onchange="setStatus(${o.id},this.value)">${['confirmed','shipped','delivered','cancelled'].map(s=>`<option ${s==o.status?'selected':''}>${s}</option>`).join('')}</select>
-  <button class="b" onclick="itemsDlg(${o.id})">Items</button>
-  ${!o.received&&o.status!='cancelled'&&o.items.length?`<button class="b" onclick="recv(${o.id})">Receive</button>`:''}</td></tr>`).join('')||'<tr><td class="muted">No orders yet. Click Sync.</td></tr>'}</table></div>
+  const t=filter.toLowerCase(),all=data.ord;
+  const cnt=k=>k=='all'?all.length:all.filter(o=>o.status==k).length;
+  const rows=all.filter(o=>(OV.f=='all'||o.status==OV.f)&&(!t||(o.retailer+o.order_number+o.tracking+o.items.map(i=>i.name).join()).toLowerCase().includes(t)));
+  const chip=(k,l)=>`<button class="b ${OV.f==k?'on':''}" onclick="OV.f='${k}';render()">${l} <span style="opacity:.7">${cnt(k)}</span></button>`;
+  const tiles=`<div class="pgrid">${rows.map(o=>{const pk=ordPkgs(o),p0=pk[0];return `<div class="pcard otile st-${o.status}" onclick="openDet('order',${o.id})">
+    <div class="pc-top"><b class="pc-name" title="${esc(o.retailer)}">${esc(o.retailer)}</b><span class="pill ${o.status}">${o.status}</span></div>
+    <div class="muted" style="font-size:12px">${o.order_number?'Order #'+esc(o.order_number)+' · ':''}${esc(o.order_date||'no date')}</div>
+    <div style="font-size:13px">${itemsLine(o)}</div>
+    ${p0?`<div>${stepsBar(p0.status)}<span class="muted" style="font-size:12px">${esc(p0.carrier||'Package')}: ${esc(p0.label)}${pk.length>1?' (+'+(pk.length-1)+' more)':''}</span></div>`:(o.tracking?`<div class="muted" style="font-size:12px">Tracking ${esc(o.tracking)}</div>`:'')}
+    <div class="pc-foot" style="justify-content:space-between;align-items:center"><span class="big">${o.total?money(o.total):'—'}</span>${o.received?'<span class="pill pos">in stock</span>':''}</div></div>`}).join('')}</div>`;
+  const table=tbl('<th>Date</th><th>Retailer</th><th>Order #</th><th>Status</th><th>Items</th><th>Total</th><th>Tracking</th>',rows.map(o=>`<tr style="cursor:pointer" onclick="openDet('order',${o.id})"><td>${esc(o.order_date||'')}</td><td>${esc(o.retailer)}</td><td>${esc(o.order_number)}</td>
+    <td><span class="pill ${o.status}">${o.status}</span>${o.received?' <span class="pill pos">in stock</span>':''}</td><td class="wrap">${itemsLine(o)}</td><td>${o.total?money(o.total):''}</td><td>${esc(o.tracking)}</td></tr>`).join(''),'No orders yet.');
+  const nrev=(data.rev||[]).length;
+  return `<div class="bar">${f()}<div class="chips">${chip('all','All')}${OSTATUS.map(k=>chip(k,k[0].toUpperCase()+k.slice(1))).join('')}</div>${viewToggle(OV)}
+  <button class="b p" onclick="ordDlg()">+ Manual order</button><button class="b" onclick="findPackages()" title="Re-read your email for shipping notices and tracking numbers">Find packages in email</button>${nrev?`<button class="b" onclick="go('review')">Needs review (${nrev})</button>`:''}</div>
+  ${rows.length?(OV.view=='tiles'?tiles:table):'<div class="panel muted">'+(all.length?'No orders in this view.':'No orders yet. Click “Sync iCloud email”.')+'</div>'}
   <details class="panel" style="margin-top:12px"${SYNCLOG&&/ERROR|!!/.test(SYNCLOG)?' open':''}><summary class="muted">Last email sync log</summary><div class="log" id="log" style="max-height:260px">${esc(SYNCLOG)||'Nothing synced yet.'}</div></details>`;
+}
+function vOrdDetail(){
+  const o=data.ord.find(x=>x.id==DET.id);if(!o){DET={kind:'',id:0};return vOrd()}
+  const pk=ordPkgs(o);
+  return `<div class="crumb"><button class="b" onclick="closeDet()">← All orders</button><h2 style="margin:0">${esc(o.retailer)}${o.order_number?' <span class="muted">#'+esc(o.order_number)+'</span>':''}</h2><span class="pill ${o.status}">${o.status}</span>${o.received?'<span class="pill pos">in stock</span>':''}</div>
+  <div class="panels"><div class="panel"><h3>Order</h3><div class="kv"><div><small>Date</small>${esc(o.order_date||'—')}</div><div><small>Total</small>${o.total?money(o.total):'—'}</div><div><small>Items</small>${(o.items||[]).reduce((n,i)=>n+(+i.qty||0),0)}</div>
+    <div><small>Status</small><select onchange="setStatus(${o.id},this.value)">${OSTATUS.map(s=>`<option ${s==o.status?'selected':''}>${s}</option>`).join('')}</select></div></div>
+    <div class="bar" style="margin:12px 0 0"><button class="b" onclick="itemsDlg(${o.id})">Edit items</button>${!o.received&&o.status!='cancelled'&&o.items.length?`<button class="b p" onclick="recv(${o.id})">Receive into inventory</button>`:''}<button class="b" onclick="findPackages()">Find packages in email</button></div></div>
+  <div class="panel"><h3>Items</h3>${mini('<th class="num">Qty</th><th>Item</th><th class="num">Each</th>',(o.items||[]).map(i=>`<tr><td class="num">${i.qty}</td><td class="wrap">${esc(i.name)}${i.sku?`<div class="muted">${esc(i.sku)}</div>`:''}</td><td class="num">${i.unit_price?money(i.unit_price):''}</td></tr>`).join(''),'No items were read from the email. Use Edit items.')}</div></div>
+  <div class="panel"><h3>Packages</h3>${pk.length?`<div class="pgrid">${pk.map(pkgTile).join('')}</div>`:`<p class="muted">No tracking number found for this order yet.${o.tracking?' Email had: '+esc(o.tracking):''} Use “Find packages in email”, or <a href="#" onclick="pkDlg();return false">add one by hand</a>.</p>`}</div>`;
 }
 function vRev(){
   return `<div class="bar"><button class="b p" onclick="parseTestDlg()">Test an email</button><span class="muted">Emails the scraper couldn't read land here. Use Test an email to see why, then send me the result.</span></div><div class="card"><table><tr><th>Retailer</th><th>Subject</th><th>Why</th><th></th></tr>

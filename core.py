@@ -93,7 +93,7 @@ CREATE TABLE IF NOT EXISTS items(
   pokemon_set TEXT DEFAULT '', card_no TEXT DEFAULT '', condition TEXT DEFAULT '', grading TEXT DEFAULT '',
   qty INTEGER DEFAULT 1, added_by TEXT DEFAULT '', purchase_date TEXT DEFAULT '', purchase_price REAL DEFAULT 0,
   purchase_source TEXT DEFAULT '', listing_platform TEXT DEFAULT '', listed_price REAL DEFAULT 0, currency TEXT DEFAULT 'USD',
-  market_price REAL DEFAULT 0, location TEXT DEFAULT '', notes TEXT DEFAULT '', created_at TEXT, updated_at TEXT
+  market_price REAL DEFAULT 0, location TEXT DEFAULT '', notes TEXT DEFAULT '', barcode TEXT DEFAULT '', created_at TEXT, updated_at TEXT
 );
 CREATE TABLE IF NOT EXISTS tsales(
   id INTEGER PRIMARY KEY, sku TEXT NOT NULL, sale_date TEXT, sold_by TEXT DEFAULT '', platform TEXT DEFAULT '', buyer TEXT DEFAULT '',
@@ -153,6 +153,9 @@ def connect(path=None):
             if path not in _INITED:
                 c.execute("PRAGMA journal_mode=WAL")
                 c.executescript(SCHEMA)
+                if "barcode" not in [r[1] for r in c.execute("PRAGMA table_info(items)")]:
+                    c.execute("ALTER TABLE items ADD COLUMN barcode TEXT DEFAULT ''")
+                    c.commit()
                 import tracker  # local import: tracker needs this module's helpers
                 tracker.ensure_seed(c)
                 tracker.migrate_legacy(c)

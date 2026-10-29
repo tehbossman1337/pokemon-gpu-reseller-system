@@ -113,7 +113,7 @@ def send_push(cfg, title, body, force=False):
     if cfg.get("desktop"):
         plan.append(("desktop", lambda: _desktop(title, body)))
     if cfg.get("discord"):
-        plan.append(("discord", lambda: _post(cfg["discord"], {"username": "Valor Inventory Agent", "content": f"**{title}**\n{body}"[:1900]})))
+        plan.append(("discord", lambda: _post(cfg["discord"], {"username": "Inventory Agent", "content": f"**{title}**\n{body}"[:1900]})))
     if cfg.get("slack"):
         plan.append(("slack", lambda: _post(cfg["slack"], {"text": f"*{title}*\n{body}"})))
     if cfg.get("ntfy"):

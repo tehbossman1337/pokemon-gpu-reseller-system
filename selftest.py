@@ -4,6 +4,7 @@ import os
 import sys
 import tempfile
 import threading
+import urllib.error
 import urllib.request
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -427,10 +428,56 @@ def api_smoke():
     srv.shutdown()
 
 
+
+def phone_test():
+    import phone
+    import qr
+    c = core.connect()
+    check("phone off by default", not phone.status(c)["enabled"])
+    phone.enable(c, True)
+    st = phone.status(c)
+    check("phone enabled", st["enabled"] and st["url"].startswith("http://") and "<svg" in st["qr"])
+    port = phone._SRV["port"]
+    tok = phone.token(c)
+
+    def call(path, body=None):
+        req = urllib.request.Request(f"http://127.0.0.1:{port}{path}", data=None if body is None else json.dumps(body).encode())
+        try:
+            with urllib.request.urlopen(req, timeout=5) as r:
+                return r.status, r.read().decode()
+        except urllib.error.HTTPError as e:
+            return e.code, e.read().decode()
+    check("phone page needs token", call("/")[0] == 403 and call("/?t=bad")[0] == 403)
+    code, page = call(f"/?t={tok}")
+    check("phone page served", code == 200 and "Inventory Agent scanner" in page)
+    check("phone scan bad token", call("/scan", {"t": "x", "code": "123"})[0] == 403)
+    check("main api not exposed", call(f"/api/items?t={tok}")[0] == 404)
+    code, r = call("/scan", {"t": tok, "code": "0820650851238", "mode": "receive"})
+    r = json.loads(r)
+    check("phone barcode receive creates item", r["ok"] and r["created"], r)
+    it = [x for x in tracker.list_items(c) if x["barcode"] == "0820650851238"]
+    check("barcode stored", len(it) == 1 and it[0]["qty"] == 1)
+    r = json.loads(call("/scan", {"t": tok, "code": "0820650851238", "mode": "receive"})[1])
+    check("barcode receive again +1", r["ok"] and not r["created"] and [x for x in tracker.list_items(c) if x["barcode"] == "0820650851238"][0]["qty"] == 2, r)
+    code, html = call(f"/s?t={tok}&code=0820650851238&mode=sell")
+    check("url-callback sell", code == 200 and "OK" in html, html)
+    check("phone mode remembered", phone.status(c)["mode"] == "sell")
+    r = json.loads(call("/scan", {"t": tok, "code": "999999999999", "mode": "sell"})[1])
+    check("sell unknown barcode error", not r["ok"] and "isn't in inventory" in r["error"], r)
+    check("duplicate barcode rejected", raises(lambda: tracker.save_item(c, {"name": "x", "barcode": "0820650851238"}), "already belongs"))
+    old = phone.token(c)
+    phone.regenerate(c)
+    check("token regenerated", phone.token(c) != old and call(f"/?t={old}")[0] == 403)
+    phone.enable(c, False)
+    check("phone stopped", not phone.status(c)["running"])
+    c.close()
+
+
 if __name__ == "__main__":
     run()
     mail_test()
     package_test()
+    phone_test()
     api_smoke()
     if FAILS:
         print(f"\n{len(FAILS)} FAILED")
