@@ -25,6 +25,11 @@ RestartApplications=no
 [Tasks]
 Name: "desktopicon"; Description: "Create a desktop shortcut"; Flags: checkedonce
 
+[InstallDelete]
+; Fresh install every time: remove every old program file first so no stale files survive an update.
+; (Your data lives in %APPDATA%\ValorInventoryAgent and is never touched.)
+Type: filesandordirs; Name: "{app}\*"
+
 [Files]
 Source: "dist\ValorInventoryAgent\*"; DestDir: "{app}"; Flags: recursesubdirs ignoreversion
 

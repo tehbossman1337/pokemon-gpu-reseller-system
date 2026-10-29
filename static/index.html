@@ -60,7 +60,7 @@ body.priv-on .sens.show,body.priv-on input.sens:focus{filter:none!important;user
 <div class="mainwrap"><div id="banner"></div>
 <header><h1 id="title"></h1><span id="syncmsg" class="muted"></span>
 <button class="b p" id="syncbtn">Sync iCloud email</button><button class="b" id="rescanbtn" title="Re-read every email in the look-back window">Re-scan all</button><button class="b" id="privbtn" onclick="PRIV.on=!PRIV.on;savePriv();render()" title="Blur addresses, cards, emails and passwords on screen">Blur: off</button><button class="b" onclick="api('open_exports',{})">Exports folder</button></header>
-<main><div id="view"></div><div class="log" id="log"></div></main></div></div>
+<main><div id="view"></div></main></div></div>
 <dialog id="dlg"><form method="dialog" id="form"></form></dialog>
 <div id="toast" popover="manual"></div>
 <script>
@@ -300,7 +300,7 @@ async function mailSettings(){
   dlg(`<p class="muted">Use an <b>app-specific password</b> from account.apple.com → Sign-In and Security. It stays on this computer.</p><label>iCloud email</label><input name="email" type="email" value="${esc(s.email)}">`+`<label>App-specific password</label><input name="password" type="password" placeholder="${s.has_password?'(saved - leave blank to keep)':'xxxx-xxxx-xxxx-xxxx'}">`+
   `<label>Mail folder(s) to read: <b>*</b> means every folder (comma-separate to pick some, e.g. INBOX, Pokemon Center)</label><input name="folder" list="mailfolders" value="${esc(s.folder)}"><datalist id="mailfolders"></datalist>
    <p><button type="button" class="b" id="loadfolders">Load my folders</button> <span id="folderstatus" class="muted">Save first if you changed the email or password.</span></p>
-   <p class="muted">Use * to read every folder (Trash and Drafts are skipped). If a folder's name contains a store name (like Pokemon Center), every email in it counts as that store, even if forwarded.</p><label>Look back (days, 0 = all time)</label><input name="days" type="number" min="0" value="${esc(s.days)}"><label class="cbl"><input type="checkbox" name="everything" ${s.everything?'checked':''}> Read every email (slower the first time, finds orders even in forwards and odd senders)</label>`,fd=>api('settings',{...fd,everything:fd.everything==='on'}));
+   <p class="muted">Use * to read every folder (Trash and Drafts are skipped). If a folder's name contains a store name (like Pokemon Center), every email in it counts as that store, even if forwarded.</p><label>Look back (days, 0 = all time)</label><input name="days" type="number" min="0" value="${esc(s.days)}">`,fd=>api('settings',fd));
   $('#loadfolders').onclick=async()=>{const st=$('#folderstatus');st.textContent='Loading…';const r=await api('mail/folders');
     if(!r.ok){st.textContent=r.error;return}st.textContent=r.folders.length+' folders found: '+r.folders.join(', ');$('#mailfolders').innerHTML=r.folders.map(f=>`<option value="${esc(f)}">`).join('')};
 }
@@ -321,7 +321,8 @@ function vOrd(){
   <td>${o.total?money(o.total):''}</td><td>${esc(o.tracking)}</td>
   <td><select onchange="setStatus(${o.id},this.value)">${['confirmed','shipped','delivered','cancelled'].map(s=>`<option ${s==o.status?'selected':''}>${s}</option>`).join('')}</select>
   <button class="b" onclick="itemsDlg(${o.id})">Items</button>
-  ${!o.received&&o.status!='cancelled'&&o.items.length?`<button class="b" onclick="recv(${o.id})">Receive</button>`:''}</td></tr>`).join('')||'<tr><td class="muted">No orders yet. Click Sync.</td></tr>'}</table></div>`;
+  ${!o.received&&o.status!='cancelled'&&o.items.length?`<button class="b" onclick="recv(${o.id})">Receive</button>`:''}</td></tr>`).join('')||'<tr><td class="muted">No orders yet. Click Sync.</td></tr>'}</table></div>
+  <details class="panel" style="margin-top:12px"${SYNCLOG&&/ERROR|!!/.test(SYNCLOG)?' open':''}><summary class="muted">Last email sync log</summary><div class="log" id="log" style="max-height:260px">${esc(SYNCLOG)||'Nothing synced yet.'}</div></details>`;
 }
 function vRev(){
   return `<div class="bar"><button class="b p" onclick="parseTestDlg()">Test an email</button><span class="muted">Emails the scraper couldn't read land here. Use Test an email to see why, then send me the result.</span></div><div class="card"><table><tr><th>Retailer</th><th>Subject</th><th>Why</th><th></th></tr>
@@ -619,11 +620,13 @@ async function autoUpdate(){
 }
 $('#rescanbtn').onclick=async()=>{if(!confirm('Re-read every email in your look-back window? Safe: statuses only move forward and stock is never added twice.'))return;const r=await api('sync',{rescan:true});if(r.error&&r.error!='already running')return toast(r.error,true);poll()};
 $('#syncbtn').onclick=async()=>{const r=await api('sync',{});if(r.error&&r.error!='already running')return toast(r.error,true);poll()};
-let timer;
+let timer,SYNCLOG='';
 async function poll(){
   const s=await api('sync');
-  $('#syncbtn').disabled=s.running;$('#rescanbtn').disabled=s.running;$('#syncmsg').textContent=s.running?'Syncing…':'';
-  $('#log').textContent=(s.log||[]).slice(-30).join('\n')+(s.error?'\nERROR: '+s.error:'')+(s.stats?'\nDone: '+JSON.stringify(s.stats):'');
+  $('#syncbtn').disabled=s.running;$('#rescanbtn').disabled=s.running;
+  const lines=(s.log||[]);$('#syncmsg').textContent=s.running?'Syncing… '+(lines.length?lines[lines.length-1].slice(0,60):''):(s.error?'Sync failed — see Orders':'');
+  SYNCLOG=lines.slice(-60).join('\n')+(s.error?'\nERROR: '+s.error:'')+(s.stats?'\nDone: '+JSON.stringify(s.stats):'');
+  const lg=document.getElementById('log');if(lg)lg.textContent=SYNCLOG;
   if(s.running)timer=setTimeout(poll,1000);else if(!poll.first||s.stats){poll.first=1;load()}
 }
 applyPriv();

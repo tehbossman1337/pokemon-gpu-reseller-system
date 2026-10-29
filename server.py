@@ -419,6 +419,7 @@ class H(BaseHTTPRequestHandler):
 
 
 def make_server(port=8765):
+    core.connect().close()  # create/upgrade the database before any request arrives
     for p in range(port, port + 20):
         try:
             return ThreadingHTTPServer(("127.0.0.1", p), H), p

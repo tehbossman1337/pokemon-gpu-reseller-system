@@ -2,6 +2,7 @@
 import os
 import re
 import sqlite3
+import threading
 from datetime import datetime, timedelta
 
 import sys
@@ -126,15 +127,24 @@ def now():
     return datetime.now().isoformat(timespec="seconds")
 
 
+_INIT_LOCK = threading.RLock()
+_INITED = set()
+
+
 def connect(path=None):
-    c = sqlite3.connect(path or DB_PATH, timeout=30)
+    path = path or DB_PATH
+    c = sqlite3.connect(path, timeout=30)
     c.row_factory = sqlite3.Row
     c.execute("PRAGMA foreign_keys=ON")
-    c.execute("PRAGMA journal_mode=WAL")
-    c.executescript(SCHEMA)
-    import tracker  # local import: tracker needs this module's helpers
-    tracker.ensure_seed(c)
-    tracker.migrate_legacy(c)
+    if path not in _INITED:  # set up the database once per run, never from several threads at the same moment
+        with _INIT_LOCK:
+            if path not in _INITED:
+                c.execute("PRAGMA journal_mode=WAL")
+                c.executescript(SCHEMA)
+                import tracker  # local import: tracker needs this module's helpers
+                tracker.ensure_seed(c)
+                tracker.migrate_legacy(c)
+                _INITED.add(path)
     return c
 
 

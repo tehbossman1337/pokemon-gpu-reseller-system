@@ -48,7 +48,7 @@ def save_conf(email_addr, password, folder="*", days=0, everything=None):
     os.chmod(CONF_PATH, 0o600)
 
 
-PARSER_VERSION = 3  # bump when the email reader improves: everything is re-read once, safely
+PARSER_VERSION = 4  # bump when the email reader improves: everything is re-read once, safely
 SKIP_FOLDERS = re.compile(r"^(drafts?|trash|deleted (messages|items)|\[gmail\]/(drafts|trash))$", re.I)
 
 
@@ -116,6 +116,8 @@ def process_message(c, message_id, sender, subject, body, date_header, extra="",
             why = w2
     if not ev and not why:
         why = "could not read this email"
+    if not ev and why in ("could not tell order status", "no order number found"):
+        return "skipped (not an order email)", retailer  # newsletters / promos from the store
     if not ev:
         c.execute(
             "INSERT INTO review(message_id,retailer,subject,reason,snippet,created_at) VALUES(?,?,?,?,?,?)",
@@ -187,20 +189,38 @@ def _uids(M, crit):
     return set(data[0].split()) if typ == "OK" and data and data[0] else set()
 
 
-def _candidates(M, since, everything, whole):
-    """Which messages in the selected folder to read."""
-    crit = f"SINCE {since}" if since else "ALL"
-    if everything or whole:
-        return _uids(M, f"({crit})"), "every email"
-    uids = set()
-    for name, doms in parsers.RETAILERS.items():
-        for d in doms:
-            uids |= _uids(M, f'({crit} FROM "{d}")')
-    for word in ("order", "shipped", "delivered", "canceled", "cancelled", "receipt", "confirmation", "tracking", "pickup", "pokemon center", "pokemoncenter"):
-        uids |= _uids(M, f'({crit} SUBJECT "{word}")')
-    for word in ("pokemoncenter", "pokemon center", "bestbuy", "gamestop", "walmart", "target.com", "costco", "samsclub"):
-        uids |= _uids(M, f'({crit} TEXT "{word}")')
-    return uids, "likely order emails"
+ORDER_WORDS = re.compile(r"order|ship|deliver|cancel|receipt|confirm|tracking|pick ?up|purchase|package|parcel|refund|invoice|payment|thank(s| you)|pre-?order", re.I)
+RELAYS = ("privaterelay.appleid.com", "icloud.com", "me.com", "mac.com")
+
+
+def _fetch_many(M, uids, spec):
+    """UID FETCH several messages in one round trip. Returns {uid(bytes): raw bytes}."""
+    out = {}
+    if not uids:
+        return out
+    typ, data = M.uid("fetch", b",".join(uids), spec)
+    if typ != "OK":
+        return out
+    for item in data or []:
+        if isinstance(item, tuple):
+            m = re.search(rb"UID (\d+)", item[0])
+            if m:
+                out[m.group(1)] = item[1]
+    return out
+
+
+def _looks_like_order(msg, mine, whole):
+    """Cheap decision from the headers alone, so only plausible order emails are downloaded in full."""
+    if whole:
+        return True
+    sender, subject = _dec(msg.get("From")), _dec(msg.get("Subject"))
+    hints = f"{_dec(msg.get('Reply-To'))} {_dec(msg.get('X-Original-From'))} {subject}"
+    if not ORDER_WORDS.search(subject):
+        return False
+    if parsers.detect_retailer(sender, hints):
+        return True
+    s = sender.lower()
+    return bool(mine and mine in s) or any(r in s for r in RELAYS)  # forwards / Hide-My-Email
 
 
 def sync(progress=print, rescan=False):
@@ -222,7 +242,6 @@ def sync(progress=print, rescan=False):
     progress("Logged in.")
     days = int(conf["days"] or 0)
     since = (datetime.now() - timedelta(days=days)).strftime("%d-%b-%Y") if days else ""
-    everything = bool(conf.get("everything", True))
     stats = {"scanned": 0, "new": 0, "updated": 0, "review": 0, "skipped": 0, "errors": 0}
     wanted = [f.strip() for f in str(conf["folder"]).split(",") if f.strip()] or ["*"]
     folders = []
@@ -245,43 +264,72 @@ def sync(progress=print, rescan=False):
             pass
         whole = folder.upper() != "INBOX" and _brand_from_folder(folder) is not None  # a folder named after a store
         default = _brand_from_folder(folder) if whole else None
-        uids, how = _candidates(M, since, everything, whole)
+        crit = f"SINCE {since}" if since else "ALL"
+        uids = _uids(M, f"({crit})")
         todo = [u for u in sorted(uids, key=int) if f"uid:{folder}:{validity}:{u.decode()}" not in seen]
-        progress(f"'{folder}': {len(uids)} emails ({how}), {len(todo)} not read yet" + (f", treating them as {default}" if default else ""))
-        for n, uid in enumerate(todo, 1):
-            key = f"uid:{folder}:{validity}:{uid.decode()}"
+        progress(f"'{folder}': {len(uids)} emails, {len(todo)} not checked yet" + (f", treating them as {default}" if default else ""))
+        mine = conf["email"].lower()
+        cands = []
+        for i in range(0, len(todo), 300):  # pass 1: headers only, 300 at a time
+            chunk = todo[i:i + 300]
             try:
-                typ, data = M.uid("fetch", uid, "(BODY.PEEK[])")
-                if typ != "OK" or not data or not isinstance(data[0], tuple):
-                    continue
-                msg = email.message_from_bytes(data[0][1])
-                mid = (msg.get("Message-ID") or key).strip()
-                dup = mid in seen and mid != key
-                seen.add(key)
-                if dup:  # same email filed in two folders
-                    c.execute("INSERT OR IGNORE INTO processed_emails VALUES(?,?,?,?,?)", (key, "", None, "duplicate", core.now()))
-                    continue
-                seen.add(mid)
-                stats["scanned"] += 1
-                subject, sender = _dec(msg.get("Subject")), _dec(msg.get("From"))
-                body = _bodies(msg)
-                extra = f"{_dec(msg.get('Reply-To'))} {_dec(msg.get('X-Original-From'))} {subject}\n{body[0][:800]}"
-                outcome, retailer = process_message(c, mid, sender, subject, body, msg.get("Date"), extra, default)
-                c.execute("INSERT OR IGNORE INTO processed_emails VALUES(?,?,?,?,?)", (mid, subject, retailer, outcome, core.now()))
-                c.execute("INSERT OR IGNORE INTO processed_emails VALUES(?,?,?,?,?)", (key, subject, retailer, outcome, core.now()))
-                c.commit()
-            except Exception as e:  # one unreadable email must never stop the scan
-                stats["errors"] += 1
-                progress(f"!! could not read email {uid.decode()} in '{folder}': {e}")
+                heads = _fetch_many(M, chunk, "(BODY.PEEK[HEADER.FIELDS (FROM SUBJECT REPLY-TO X-ORIGINAL-FROM MESSAGE-ID)])")
+            except Exception as e:
+                progress(f"!! header batch failed in '{folder}': {e}")
+                heads = {}
+            for uid in chunk:
+                raw = heads.get(uid)
+                if raw is None or _looks_like_order(email.message_from_bytes(raw), mine, whole):
+                    cands.append(uid)
+                else:
+                    c.execute("INSERT OR IGNORE INTO processed_emails VALUES(?,?,?,?,?)",
+                              (f"uid:{folder}:{validity}:{uid.decode()}", "", None, "skipped (not an order email)", core.now()))
+                    stats["skipped"] += 1
+                    stats["scanned"] += 1
+            c.commit()
+            progress(f"'{folder}': checked {min(i + 300, len(todo))} of {len(todo)} ...")
+        if todo:
+            progress(f"'{folder}': {len(cands)} look like orders - reading them now")
+        for i in range(0, len(cands), 10):  # pass 2: full text of likely orders, 10 per round trip
+            chunk = cands[i:i + 10]
+            try:
+                raws = _fetch_many(M, chunk, "(BODY.PEEK[])")
+            except Exception as e:
+                progress(f"!! could not download a batch in '{folder}': {e}")
+                stats["errors"] += len(chunk)
                 continue
-            k = ("review" if "review" in outcome else "skipped" if outcome.startswith("skipped")
-                 else "new" if outcome.startswith("new") else "updated")
-            stats[k] += 1
-            if retailer:
-                by_retailer[retailer] = by_retailer.get(retailer, 0) + 1
-                progress(f"[{retailer}] {subject[:60]} -> {outcome}")
-            elif n % 100 == 0:
-                progress(f"'{folder}': read {n} of {len(todo)} ...")
+            for uid in chunk:
+                key = f"uid:{folder}:{validity}:{uid.decode()}"
+                try:
+                    raw = raws.get(uid)
+                    if raw is None:
+                        continue
+                    msg = email.message_from_bytes(raw)
+                    mid = (msg.get("Message-ID") or key).strip()
+                    dup = mid in seen and mid != key
+                    seen.add(key)
+                    if dup:  # same email filed in two folders
+                        c.execute("INSERT OR IGNORE INTO processed_emails VALUES(?,?,?,?,?)", (key, "", None, "duplicate", core.now()))
+                        continue
+                    seen.add(mid)
+                    stats["scanned"] += 1
+                    subject, sender = _dec(msg.get("Subject")), _dec(msg.get("From"))
+                    body = _bodies(msg)
+                    extra = f"{_dec(msg.get('Reply-To'))} {_dec(msg.get('X-Original-From'))} {subject}\n{body[0][:800]}"
+                    outcome, retailer = process_message(c, mid, sender, subject, body, msg.get("Date"), extra, default)
+                    c.execute("INSERT OR IGNORE INTO processed_emails VALUES(?,?,?,?,?)", (mid, subject, retailer, outcome, core.now()))
+                    c.execute("INSERT OR IGNORE INTO processed_emails VALUES(?,?,?,?,?)", (key, subject, retailer, outcome, core.now()))
+                    c.commit()
+                except Exception as e:  # one unreadable email must never stop the scan
+                    stats["errors"] += 1
+                    progress(f"!! could not read email {uid.decode()} in '{folder}': {e}")
+                    continue
+                k = ("review" if "review" in outcome else "skipped" if outcome.startswith("skipped")
+                     else "new" if outcome.startswith("new") else "updated")
+                stats[k] += 1
+                if retailer and not outcome.startswith("skipped"):
+                    by_retailer[retailer] = by_retailer.get(retailer, 0) + 1
+                    progress(f"[{retailer}] {subject[:60]} -> {outcome}")
     try:
         M.logout()
     except Exception:

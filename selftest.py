@@ -172,6 +172,7 @@ def mail_test():
     FOLDERS = {
         "INBOX": {b"1": mk("promo@shop.com", "Big sale", "buy now", "<i1>"),
                   b"2": mk("Me <me@icloud.com>", "Fwd: your order", "From: Target <orders@target.com>\nOrder #912345678901\n1 x Booster Bundle $26.94\nOrder total: $26.94", "<i2>"),
+                  b"4": mk(PC, "The Game Boy Jukebox Has Returned!", "Shop now and save on merch", "<i4>"),
                   b"3": mk("Orders <no-reply@pokemon.com>", "Your Pokemon Center order has shipped", "Order Number: 77001122 tracking number 1Z999AA10123456784", "<i3>")},
         "Archive": {b"1": mk(PC, "Thank you for your order!", "view in browser", "<a1>",
                              html="<html><body><p>Order Number</p><p>77001122</p><p>Pokemon TCG Elite Trainer Box</p><p>Qty: 2</p><p>$109.98</p><p>Order Total: $109.98</p></body></html>"),
@@ -199,8 +200,16 @@ def mail_test():
                 if m:
                     ids = [i for i in ids if m.group(1).lower().encode() in FOLDERS[s.f][i].lower()]
                 return "OK", [b" ".join(ids)]
-            uid_ = a[0]
-            return "OK", [(b"1 (UID 1 BODY[] {1}", FOLDERS[s.f][uid_]), b")"]
+            out = []
+            for u in a[0].split(b","):
+                raw = FOLDERS[s.f][u]
+                if "HEADER.FIELDS" in str(a[1]):
+                    import email as _e
+                    mm = _e.message_from_bytes(raw)
+                    raw = "".join(f"{k}: {mm[k]}\r\n" for k in ("From", "Subject", "Message-ID") if mm[k]).encode()
+                out.append((b"1 (UID " + u + b" BODY[] {1}", raw))
+                out.append(b")")
+            return "OK", out
     real = imaplib.IMAP4_SSL
     imaplib.IMAP4_SSL = Fake
     try:
@@ -221,7 +230,8 @@ def mail_test():
         check("drafts skipped", ("Pokemon Center", "99999999") not in orders)
         it = c.execute("select qty from order_items oi join orders o on o.id=oi.order_id where o.order_number='77001122'").fetchone()
         check("items parsed from separate-line layout", it and it[0] == 2, it)
-        check("scanned everything incl. non-retailers", st["scanned"] >= 5 and st["skipped"] >= 2, st)
+        check("checked everything incl. non-retailers", st["scanned"] >= 5 and st["skipped"] >= 2, st)
+        check("only plausible mails fully read", sum(1 for r in c.execute("select outcome from processed_emails where outcome not like 'skipped%' and outcome != 'duplicate' and subject != ''")) >= 3)
         st2 = mail_sync.sync(progress=log.append)
         check("second sync reads nothing new", st2["scanned"] == 0, st2)
         st3 = mail_sync.sync(progress=log.append, rescan=True)
@@ -230,11 +240,8 @@ def mail_test():
         json.dump({"email": "me@icloud.com", "password": "x", "folder": "INBOX", "days": 30}, open(mail_sync.CONF_PATH, "w"))
         conf = mail_sync.load_conf()
         check("old config upgraded", conf["folder"] == "*" and conf["days"] == 0, conf)
-        # likely-orders mode only reads candidates
-        json.dump({"email": "me@icloud.com", "password": "x", "folder": "*", "days": 0, "everything": False, "upgraded": 3}, open(mail_sync.CONF_PATH, "w"))
-        c.execute("delete from processed_emails"); c.commit()
-        st4 = mail_sync.sync(progress=log.append)
-        check("candidate mode skips unrelated mail", st4["scanned"] < st["scanned"], (st4, st))
+        # promos from the store are skipped quietly and never fill the Review queue
+        check("promo not in review", c.execute("select count(*) from review where subject like '%Jukebox%'").fetchone()[0] == 0)
         core.connect = orig
     finally:
         imaplib.IMAP4_SSL = real
