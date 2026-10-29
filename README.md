@@ -40,3 +40,9 @@ Every push to `main` builds a new installer and publishes it as a GitHub release
 
 ## Tests
 `python selftest.py` runs the backend checks (the build runs it before packaging). `python gen_embedded.py` rebuilds the embedded UI after editing `static/index.html`.
+
+## Email scanning
+By default the app reads **every folder, all time** (Trash and Drafts skipped) and every message, so order emails are found even in forwards, other folders or odd senders. Messages already read are remembered and skipped. Settings → Email settings lets you pick folders or limit it to likely order emails. When the email reader improves, everything is re-read once automatically (safe: no double stock).
+
+## Privacy blur
+Valor Accounts/Profiles show full shipping and billing addresses. Turn on **Blur** (header button or the bar above the tables) to blur addresses, card details, email/phone and passwords/proxies; click any value to reveal it. The choice is remembered.

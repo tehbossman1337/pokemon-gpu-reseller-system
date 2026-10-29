@@ -155,6 +155,91 @@ def run():
     c.close()
 
 
+# ------------------------------------------------------------------ mail scanner against a fake iCloud
+def mail_test():
+    import imaplib
+    import re as _re
+    from email.message import EmailMessage
+
+    def mk(frm, subj, body, mid, html=None, to="alias@icloud.com"):
+        m = EmailMessage()
+        m["From"], m["To"], m["Subject"], m["Message-ID"], m["Date"] = frm, to, subj, mid, "Mon, 26 Oct 2026 10:00:00 -0400"
+        m.set_content(body)
+        if html:
+            m.add_alternative(html, subtype="html")
+        return m.as_bytes()
+    PC = "Pokemon Center <pokemoncenter@email.pokemoncenter.com>"
+    FOLDERS = {
+        "INBOX": {b"1": mk("promo@shop.com", "Big sale", "buy now", "<i1>"),
+                  b"2": mk("Me <me@icloud.com>", "Fwd: your order", "From: Target <orders@target.com>\nOrder #912345678901\n1 x Booster Bundle $26.94\nOrder total: $26.94", "<i2>"),
+                  b"3": mk("Orders <no-reply@pokemon.com>", "Your Pokemon Center order has shipped", "Order Number: 77001122 tracking number 1Z999AA10123456784", "<i3>")},
+        "Archive": {b"1": mk(PC, "Thank you for your order!", "view in browser", "<a1>",
+                             html="<html><body><p>Order Number</p><p>77001122</p><p>Pokemon TCG Elite Trainer Box</p><p>Qty: 2</p><p>$109.98</p><p>Order Total: $109.98</p></body></html>"),
+                    b"2": mk("friend@x.com", "lunch?", "no order here", "<a2>")},
+        "Drafts": {b"1": mk(PC, "Thank you for your order", "Order #99999999\n1 x X Thing $5.00", "<d1>")},
+    }
+
+    class Fake:
+        def __init__(s, *a):
+            s.f = None
+        def login(s, u, p): return "OK", [b""]
+        def noop(s): return "OK", [b""]
+        def logout(s): pass
+        def list(s): return "OK", [f'(\\HasNoChildren) "/" "{n}"'.encode() for n in FOLDERS] + [b'(\\Noselect) "/" "[Gmail]"']
+        def select(s, f, readonly=True):
+            f = f.strip('"')
+            if f not in FOLDERS:
+                return "NO", [b""]
+            s.f = f
+            return "OK", [b"1"]
+        def response(s, k): return k, [b"7"]
+        def uid(s, cmd, *a):
+            if cmd == "search":
+                q = " ".join(map(str, a)); ids = sorted(FOLDERS[s.f]); m = _re.search(r'"([^"]+)"', q)
+                if m:
+                    ids = [i for i in ids if m.group(1).lower().encode() in FOLDERS[s.f][i].lower()]
+                return "OK", [b" ".join(ids)]
+            uid_ = a[0]
+            return "OK", [(b"1 (UID 1 BODY[] {1}", FOLDERS[s.f][uid_]), b")"]
+    real = imaplib.IMAP4_SSL
+    imaplib.IMAP4_SSL = Fake
+    try:
+        mail_sync.save_conf("me@icloud.com", "x")  # defaults: every folder, all time
+        conf = mail_sync.load_conf()
+        check("mail defaults", conf["folder"] == "*" and conf["days"] == 0 and conf["everything"])
+        c = core.connect(os.path.join(os.environ["VALOR_DATA"], "mail.db"))
+        orig = core.connect
+        core.connect = lambda *a, **k: orig(os.path.join(os.environ["VALOR_DATA"], "mail.db"))
+        log = []
+        st = mail_sync.sync(progress=log.append)
+        text = "\n".join(log)
+        check("all folders listed", "INBOX" in text and "Archive" in text and "Drafts" not in text.split("Folders to read")[1].split("\n")[0], text[:300])
+        orders = {(r["retailer"], r["order_number"]): r["status"] for r in c.execute("select * from orders")}
+        check("pokemon center order read (archive)", ("Pokemon Center", "77001122") in orders, orders)
+        check("status moved forward to shipped", orders.get(("Pokemon Center", "77001122")) == "shipped", orders)
+        check("forwarded target order", ("Target", "912345678901") in orders, orders)
+        check("drafts skipped", ("Pokemon Center", "99999999") not in orders)
+        it = c.execute("select qty from order_items oi join orders o on o.id=oi.order_id where o.order_number='77001122'").fetchone()
+        check("items parsed from separate-line layout", it and it[0] == 2, it)
+        check("scanned everything incl. non-retailers", st["scanned"] >= 5 and st["skipped"] >= 2, st)
+        st2 = mail_sync.sync(progress=log.append)
+        check("second sync reads nothing new", st2["scanned"] == 0, st2)
+        st3 = mail_sync.sync(progress=log.append, rescan=True)
+        check("rescan idempotent", st3["scanned"] >= 5 and c.execute("select count(*) from orders").fetchone()[0] == len(orders), st3)
+        # old config (INBOX, 30 days, no upgrade marker) is upgraded to scan everything
+        json.dump({"email": "me@icloud.com", "password": "x", "folder": "INBOX", "days": 30}, open(mail_sync.CONF_PATH, "w"))
+        conf = mail_sync.load_conf()
+        check("old config upgraded", conf["folder"] == "*" and conf["days"] == 0, conf)
+        # likely-orders mode only reads candidates
+        json.dump({"email": "me@icloud.com", "password": "x", "folder": "*", "days": 0, "everything": False, "upgraded": 3}, open(mail_sync.CONF_PATH, "w"))
+        c.execute("delete from processed_emails"); c.commit()
+        st4 = mail_sync.sync(progress=log.append)
+        check("candidate mode skips unrelated mail", st4["scanned"] < st["scanned"], (st4, st))
+        core.connect = orig
+    finally:
+        imaplib.IMAP4_SSL = real
+
+
 def api_smoke():
     import server
     import static_embedded
@@ -198,6 +283,7 @@ def api_smoke():
 
 if __name__ == "__main__":
     run()
+    mail_test()
     api_smoke()
     if FAILS:
         print(f"\n{len(FAILS)} FAILED")

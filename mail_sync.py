@@ -26,15 +26,30 @@ def load_conf():
             conf = json.load(f)
     conf["email"] = os.environ.get("ICLOUD_EMAIL", conf.get("email", ""))
     conf["password"] = os.environ.get("ICLOUD_APP_PASSWORD", conf.get("password", ""))
-    conf.setdefault("folder", "INBOX")
-    conf.setdefault("days", 30)
+    if os.path.exists(CONF_PATH) and conf.get("upgraded", 0) < 3 and conf.get("email"):
+        conf["folder"], conf["days"], conf["everything"] = "*", 0, True  # one-time: scan every folder, all time
+        try:
+            with open(CONF_PATH, "w") as f:
+                json.dump({**conf, "upgraded": 3}, f)
+        except Exception:
+            pass
+    conf.setdefault("folder", "*")      # * = every folder
+    conf.setdefault("days", 0)          # 0 = all time
+    conf.setdefault("everything", True)  # read every email instead of only ones that look like orders
     return conf
 
 
-def save_conf(email_addr, password, folder="INBOX", days=30):
+def save_conf(email_addr, password, folder="*", days=0, everything=None):
+    old = load_conf() if os.path.exists(CONF_PATH) else {}
+    ev = old.get("everything", True) if everything is None else bool(everything)
     with open(CONF_PATH, "w") as f:
-        json.dump({"email": email_addr, "password": password, "folder": folder, "days": days}, f)
+        json.dump({"email": email_addr, "password": password, "folder": folder, "days": days, "everything": ev,
+                   "upgraded": 3}, f)
     os.chmod(CONF_PATH, 0o600)
+
+
+PARSER_VERSION = 3  # bump when the email reader improves: everything is re-read once, safely
+SKIP_FOLDERS = re.compile(r"^(drafts?|trash|deleted (messages|items)|\[gmail\]/(drafts|trash))$", re.I)
 
 
 def _dec(v):
@@ -155,75 +170,123 @@ def _brand_from_folder(name):
     return None
 
 
+def _all_folders(M):
+    out = []
+    for line in M.list()[1] or []:
+        txt = line.decode(errors="replace") if isinstance(line, bytes) else str(line)
+        m = re.match(r'\((?P<flags>[^)]*)\)\s+"(?P<sep>[^"]*)"\s+(?P<name>.+)$', txt)
+        if m and "\\Noselect" not in m.group("flags"):
+            n = m.group("name").strip().strip('"')
+            if not SKIP_FOLDERS.match(n):
+                out.append(n)
+    return out
+
+
+def _uids(M, crit):
+    typ, data = M.uid("search", None, crit)
+    return set(data[0].split()) if typ == "OK" and data and data[0] else set()
+
+
+def _candidates(M, since, everything, whole):
+    """Which messages in the selected folder to read."""
+    crit = f"SINCE {since}" if since else "ALL"
+    if everything or whole:
+        return _uids(M, f"({crit})"), "every email"
+    uids = set()
+    for name, doms in parsers.RETAILERS.items():
+        for d in doms:
+            uids |= _uids(M, f'({crit} FROM "{d}")')
+    for word in ("order", "shipped", "delivered", "canceled", "cancelled", "receipt", "confirmation", "tracking", "pickup", "pokemon center", "pokemoncenter"):
+        uids |= _uids(M, f'({crit} SUBJECT "{word}")')
+    for word in ("pokemoncenter", "pokemon center", "bestbuy", "gamestop", "walmart", "target.com", "costco", "samsclub"):
+        uids |= _uids(M, f'({crit} TEXT "{word}")')
+    return uids, "likely order emails"
+
+
 def sync(progress=print, rescan=False):
     conf = load_conf()
     if not conf["email"] or not conf["password"]:
         raise RuntimeError("iCloud credentials not set. Click Settings and add your iCloud email and app-specific password.")
     c = core.connect()
-    if rescan:  # re-read everything: safe, order statuses only ever move forward and stock is only added once
+    pv = c.execute("SELECT value FROM settings WHERE key='parser_version'").fetchone()
+    if rescan or not pv or str(pv[0]) != str(PARSER_VERSION):
+        # re-read everything: safe, order statuses only ever move forward and stock is only added once
         c.execute("DELETE FROM processed_emails")
         c.execute("DELETE FROM review WHERE resolved=0")
+        c.execute("INSERT OR REPLACE INTO settings VALUES('parser_version',?)", (str(PARSER_VERSION),))
         c.commit()
-        progress("Re-scan: forgetting which emails were already read")
+        progress("Re-reading every email (first run with the improved reader)" if not rescan else "Re-scan: forgetting which emails were already read")
     seen = {r[0] for r in c.execute("SELECT message_id FROM processed_emails")}
     progress(f"Connecting to iCloud as {conf['email']} ...")
     M = _login(conf)
     progress("Logged in.")
     days = int(conf["days"] or 0)
     since = (datetime.now() - timedelta(days=days)).strftime("%d-%b-%Y") if days else ""
-    stats = {"scanned": 0, "new": 0, "updated": 0, "review": 0, "skipped": 0}
-    folders = [f.strip() for f in str(conf["folder"]).split(",") if f.strip()] or ["INBOX"]
+    everything = bool(conf.get("everything", True))
+    stats = {"scanned": 0, "new": 0, "updated": 0, "review": 0, "skipped": 0, "errors": 0}
+    wanted = [f.strip() for f in str(conf["folder"]).split(",") if f.strip()] or ["*"]
+    folders = []
+    for f in wanted:
+        if f in ("*", "ALL", "all", "All folders"):
+            folders += [x for x in _all_folders(M) if x not in folders]
+        elif f not in folders:
+            folders.append(f)
+    progress(f"Folders to read ({len(folders)}): " + ", ".join(folders))
+    by_retailer = {}
     for folder in folders:
         typ, _ = M.select(f'"{folder}"', readonly=True)
         if typ != "OK":
             progress(f"!! Folder '{folder}' not found. Use Settings > Load my folders to pick the exact name.")
             continue
-        whole = folder.upper() != "INBOX"  # a folder you set up for one retailer: every message in it counts
+        validity = ""
+        try:
+            validity = (M.response("UIDVALIDITY")[1] or [b""])[0].decode()
+        except Exception:
+            pass
+        whole = folder.upper() != "INBOX" and _brand_from_folder(folder) is not None  # a folder named after a store
         default = _brand_from_folder(folder) if whole else None
-        crit = f"SINCE {since}" if since else "ALL"
-        uids = set()
-        if whole:
-            typ, data = M.search(None, f"({crit})")
-            if typ == "OK" and data[0]:
-                uids.update(data[0].split())
-            progress(f"Folder '{folder}': {len(uids)} emails" + (f" (treating them as {default})" if default else ""))
-        else:
-            per = {}
-            for name, doms in parsers.RETAILERS.items():
-                for d in doms:
-                    typ, data = M.search(None, f'({crit} FROM "{d}")')
-                    if typ == "OK" and data[0]:
-                        per[name] = per.get(name, 0) + len(data[0].split())
-                        uids.update(data[0].split())
-            for word in ("order", "shipped", "delivered", "canceled", "cancelled"):
-                typ, data = M.search(None, f'({crit} SUBJECT "{word}")')
-                if typ == "OK" and data[0]:
-                    uids.update(data[0].split())
-            progress("Inbox, from retailers: " + (", ".join(f"{k} {v}" for k, v in per.items()) or "none found") + f"; {len(uids)} candidates")
-        for uid in sorted(uids, key=int):
-            typ, data = M.fetch(uid, "(BODY.PEEK[])")
-            if typ != "OK" or not data or not data[0]:
+        uids, how = _candidates(M, since, everything, whole)
+        todo = [u for u in sorted(uids, key=int) if f"uid:{folder}:{validity}:{u.decode()}" not in seen]
+        progress(f"'{folder}': {len(uids)} emails ({how}), {len(todo)} not read yet" + (f", treating them as {default}" if default else ""))
+        for n, uid in enumerate(todo, 1):
+            key = f"uid:{folder}:{validity}:{uid.decode()}"
+            try:
+                typ, data = M.uid("fetch", uid, "(BODY.PEEK[])")
+                if typ != "OK" or not data or not isinstance(data[0], tuple):
+                    continue
+                msg = email.message_from_bytes(data[0][1])
+                mid = (msg.get("Message-ID") or key).strip()
+                dup = mid in seen and mid != key
+                seen.add(key)
+                if dup:  # same email filed in two folders
+                    c.execute("INSERT OR IGNORE INTO processed_emails VALUES(?,?,?,?,?)", (key, "", None, "duplicate", core.now()))
+                    continue
+                seen.add(mid)
+                stats["scanned"] += 1
+                subject, sender = _dec(msg.get("Subject")), _dec(msg.get("From"))
+                body = _bodies(msg)
+                extra = f"{_dec(msg.get('Reply-To'))} {_dec(msg.get('X-Original-From'))} {subject}\n{body[0][:800]}"
+                outcome, retailer = process_message(c, mid, sender, subject, body, msg.get("Date"), extra, default)
+                c.execute("INSERT OR IGNORE INTO processed_emails VALUES(?,?,?,?,?)", (mid, subject, retailer, outcome, core.now()))
+                c.execute("INSERT OR IGNORE INTO processed_emails VALUES(?,?,?,?,?)", (key, subject, retailer, outcome, core.now()))
+                c.commit()
+            except Exception as e:  # one unreadable email must never stop the scan
+                stats["errors"] += 1
+                progress(f"!! could not read email {uid.decode()} in '{folder}': {e}")
                 continue
-            msg = email.message_from_bytes(data[0][1])
-            mid = (msg.get("Message-ID") or f"{folder}-uid-{uid.decode()}").strip()
-            if mid in seen:
-                continue
-            seen.add(mid)
-            stats["scanned"] += 1
-            subject, sender = _dec(msg.get("Subject")), _dec(msg.get("From"))
-            body = _bodies(msg)
-            extra = f"{_dec(msg.get('Reply-To'))} {_dec(msg.get('X-Original-From'))} {subject}\n{body[0][:800]}"
-            outcome, retailer = process_message(c, mid, sender, subject, body, msg.get("Date"), extra, default)
-            c.execute("INSERT OR IGNORE INTO processed_emails VALUES(?,?,?,?,?)", (mid, subject, retailer, outcome, core.now()))
-            c.commit()
-            key = ("review" if "review" in outcome else "skipped" if outcome.startswith("skipped")
-                   else "new" if outcome.startswith("new") else "updated")
-            stats[key] += 1
-            progress(f"[{retailer or '-'}] {subject[:60]} -> {outcome}")
+            k = ("review" if "review" in outcome else "skipped" if outcome.startswith("skipped")
+                 else "new" if outcome.startswith("new") else "updated")
+            stats[k] += 1
+            if retailer:
+                by_retailer[retailer] = by_retailer.get(retailer, 0) + 1
+                progress(f"[{retailer}] {subject[:60]} -> {outcome}")
+            elif n % 100 == 0:
+                progress(f"'{folder}': read {n} of {len(todo)} ...")
     try:
         M.logout()
     except Exception:
         pass
+    progress("Order emails found: " + (", ".join(f"{k} {v}" for k, v in by_retailer.items()) or "none"))
     c.close()
     return stats
 

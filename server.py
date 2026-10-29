@@ -188,7 +188,7 @@ class H(BaseHTTPRequestHandler):
             if u.path == "/api/settings":
                 conf = mail_sync.load_conf()
                 return self.send({"email": conf["email"], "has_password": bool(conf["password"]),
-                                  "folder": conf["folder"], "days": conf["days"]})
+                                  "folder": conf["folder"], "days": conf["days"], "everything": bool(conf.get("everything", True))})
             self.send({"error": "not found"}, 404)
         finally:
             c.close()
@@ -206,7 +206,8 @@ class H(BaseHTTPRequestHandler):
             if u.path == "/api/settings":
                 old = mail_sync.load_conf()
                 mail_sync.save_conf(b.get("email", old["email"]), b.get("password") or old["password"],
-                                    b.get("folder", "INBOX") or "INBOX", int(b["days"]) if str(b.get("days", "")).strip().isdigit() else 30)
+                                    b.get("folder", "*") or "*", int(b["days"]) if str(b.get("days", "")).strip().isdigit() else 0,
+                                    bool(b.get("everything")))
                 return self.send({"ok": True})
             if u.path == "/api/items/save":
                 return self.send({"ok": True, "id": tracker.save_item(c, b, b.get("id"))})

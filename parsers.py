@@ -9,7 +9,7 @@ from datetime import datetime
 from email.utils import parsedate_to_datetime
 
 RETAILERS = {
-    "Pokemon Center": ["pokemoncenter.com"],
+    "Pokemon Center": ["pokemoncenter.com", "pokemon.com"],
     "Target": ["target.com"],
     "Walmart": ["walmart.com"],
     "Best Buy": ["bestbuy.com"],
@@ -28,6 +28,9 @@ STATUS_RULES = [  # first match wins; checked against subject, then body head
 ORDER_NO = [
     r"order\s*(?:number|no\.?|#|id)\s*[:#]?\s*([A-Z0-9][A-Z0-9\-]{5,24})",
     r"order\s*#\s*([A-Z0-9][A-Z0-9\-]{5,24})",
+    r"(?:confirmation|reference)\s*(?:number|no\.?|#|code|id)\s*[:#]?\s*([A-Z0-9][A-Z0-9\-]{5,24})",
+    r"\border\s*[:\-]\s*#?\s*([A-Z0-9][A-Z0-9\-]{5,24})",
+    r"\border\s+([0-9]{7,15})\b",
     r"#\s*([0-9]{6,15})",
 ]
 TRACKING = [
@@ -79,6 +82,41 @@ def _first(patterns, text, flags=re.I):
     return ""
 
 
+NOT_ITEM = re.compile(r"\b(total|subtotal|sub-total|tax|shipping|handling|discount|savings?|save|from|gift|balance|estimated|points|"
+                      r"was|price|payment|visa|mastercard|amex|paypal|promo|coupon|order|delivery|fee|refund)\b", re.I)
+PRICE = re.compile(r"\$\s*([\d,]+\.\d{2})")
+QTY_ONLY = re.compile(r"^(?:qty|quantity)\s*[:x]?\s*(\d{1,3})\b|^x\s*(\d{1,3})$|^(\d{1,3})\s*x$", re.I)
+
+
+def _name_like(l):
+    return len(re.findall(r"[A-Za-z]", l)) >= 6 and not PRICE.fullmatch(l.strip()) and not re.match(r"^(item|price|qty|quantity|sku|total|subtotal)\b[:\s]*$", l.strip(), re.I)
+
+
+def _loose_items(lines):
+    """Layouts where name, quantity and price sit on separate lines (typical HTML email tables)."""
+    items = []
+    for i, ln in enumerate(lines):
+        m = QTY_ONLY.match(ln.strip())
+        if not m:
+            continue
+        qty = int(next(g for g in m.groups() if g))
+        name = next((lines[j].strip() for j in range(i - 1, max(-1, i - 5), -1) if _name_like(lines[j]) and not NOT_ITEM.search(lines[j].split("$")[0][:40] or "") ), None)
+        if not name:
+            name = next((lines[j].strip() for j in range(i - 1, max(-1, i - 5), -1) if _name_like(lines[j])), None)
+        window = lines[max(0, i - 1):i + 4]
+        pm = next((PRICE.search(w) for w in window if PRICE.search(w)), None)
+        if name and pm and qty:
+            price = float(pm.group(1).replace(",", ""))
+            items.append({"name": PRICE.sub("", name).strip(" -–:|"), "qty": qty, "price": round(price / qty, 2)})
+    if items:
+        return items
+    for ln in lines:  # last resort: "Product name   $19.99" with one unit
+        m = re.match(r"^(.{8,120}?)\s{1,}[-–:|]?\s*\$\s*([\d,]+\.\d{2})\s*$", ln.strip())
+        if m and _name_like(m.group(1)) and not NOT_ITEM.search(m.group(1)):
+            items.append({"name": m.group(1).strip(" -–:|"), "qty": 1, "price": float(m.group(2).replace(",", ""))})
+    return items
+
+
 def parse_items(body):
     items = []
     lines = body.splitlines()
@@ -92,6 +130,13 @@ def parse_items(body):
         if m:
             name, qty, price = m.group(1), int(m.group(2)), float(m.group(3).replace(",", ""))
             items.append({"name": name.strip(" -–"), "qty": qty, "price": price})
+    if not items:  # column layout:  name   2   $49.99   $99.98
+        for ln in lines:
+            m = re.match(r"^(.{6,120}?)\s{2,}(\d{1,3})\s{2,}\$\s*([\d,]+\.\d{2})(?:\s{2,}\$\s*[\d,]+\.\d{2})?\s*$", ln)
+            if m and _name_like(m.group(1)):
+                items.append({"name": m.group(1).strip(" -–"), "qty": int(m.group(2)), "price": float(m.group(3).replace(",", ""))})
+    if not items:
+        items = _loose_items([l for l in lines if l.strip()])
     # attach SKUs found on the line right after an item
     for i, ln in enumerate(lines):
         sm = SKU_RE.search(ln)
