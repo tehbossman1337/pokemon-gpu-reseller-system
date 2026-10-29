@@ -473,11 +473,33 @@ def phone_test():
     c.close()
 
 
+
+def groups_test():
+    c = core.connect()
+    check("no groups at start", vdata.list_groups(c) == {"acc": [], "prof": []})
+    vdata.add_group(c, "prof", "Walmart US")
+    vdata.add_group(c, "acc", "Walmart US")
+    check("group listed", vdata.list_groups(c)["prof"] == ["Walmart US"])
+    check("dup group refused", raises(lambda: vdata.add_group(c, "prof", "walmart us"), "already exists"))
+    check("blank group refused", raises(lambda: vdata.add_group(c, "prof", "  "), "name"))
+    vdata.save_profile(c, "Walmart US", {"name": "P1", "email": "a@b.com", "shipping": {"addressLine1": "12 Main Street", "city": "Austin", "state": "TX", "zipCode": "78701"}})
+    c.commit()
+    check("group with data refuses same name", raises(lambda: vdata.add_group(c, "prof", "Walmart US"), "already exists"))
+    vdata.rename_group(c, "prof", "Walmart US", "WM")
+    check("rename moves profiles", [p["site"] for p in vdata.list_profiles(c)] == ["WM"] and vdata.list_groups(c)["prof"] == ["WM"])
+    vdata.add_group(c, "prof", "Other")
+    check("rename clash refused", raises(lambda: vdata.rename_group(c, "prof", "WM", "other"), "already exists"))
+    vdata.remove_group_name(c, "prof", "Other")
+    check("name removed", vdata.list_groups(c)["prof"] == ["WM"])
+    c.close()
+
+
 if __name__ == "__main__":
     run()
     mail_test()
     package_test()
     phone_test()
+    groups_test()
     api_smoke()
     if FAILS:
         print(f"\n{len(FAILS)} FAILED")

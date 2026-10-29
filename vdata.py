@@ -301,3 +301,60 @@ def patch_accounts(c, site, ids, changes):
         c.execute("UPDATE vaccounts SET data=? WHERE site=? AND id=?", (json.dumps(rec), site, aid))
         n += 1
     return n
+
+
+# ---------------------------------------------------------------- groups (a group = a website; may be empty)
+def _gkey(kind):
+    if kind not in ("acc", "prof"):
+        raise ValueError("Unknown group type")
+    return "vgroups:" + kind
+
+
+def list_groups(c):
+    out = {}
+    for kind in ("acc", "prof"):
+        r = c.execute("SELECT value FROM settings WHERE key=?", (_gkey(kind),)).fetchone()
+        try:
+            out[kind] = [str(x) for x in json.loads(r[0])] if r else []
+        except ValueError:
+            out[kind] = []
+    return out
+
+
+def _set_groups(c, kind, names):
+    c.execute("INSERT OR REPLACE INTO settings VALUES(?,?)", (_gkey(kind), json.dumps(sorted(set(names), key=str.lower))))
+
+
+def add_group(c, kind, name):
+    name = (name or "").strip()
+    if not name:
+        raise ValueError("Give the group a name")
+    if len(name) > 60:
+        raise ValueError("Group names can be up to 60 characters")
+    table = "vaccounts" if kind == "acc" else "vprofiles"
+    existing = {r[0].lower() for r in c.execute(f"SELECT DISTINCT site FROM {table}")} | {n.lower() for n in list_groups(c)[kind]}
+    if name.lower() in existing:
+        raise ValueError(f"A group named {name} already exists")
+    _set_groups(c, kind, list_groups(c)[kind] + [name])
+    return name
+
+
+def remove_group_name(c, kind, name):
+    _set_groups(c, kind, [n for n in list_groups(c)[kind] if n != name])
+
+
+def rename_group(c, kind, old, new):
+    new = (new or "").strip()
+    if not new:
+        raise ValueError("Give the group a name")
+    if new == old:
+        return new
+    table = "vaccounts" if kind == "acc" else "vprofiles"
+    taken = {r[0].lower() for r in c.execute(f"SELECT DISTINCT site FROM {table}")} | {n.lower() for n in list_groups(c)[kind]}
+    if new.lower() in taken:
+        raise ValueError(f"A group named {new} already exists")
+    c.execute(f"UPDATE {table} SET site=? WHERE site=?", (new, old))
+    if kind == "acc":
+        c.execute("UPDATE settings SET key=? WHERE key=?", (f"sessions:{new}", f"sessions:{old}"))
+    _set_groups(c, kind, [new if n == old else n for n in list_groups(c)[kind]])
+    return new

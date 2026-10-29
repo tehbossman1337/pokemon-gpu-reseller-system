@@ -162,9 +162,9 @@ let IF={status:'',category:''},NC=null;
 
 async function load(){
   const g=p=>api(p);
-  const [inv,sal,rec,dash,ord,rev,acc,prof,lim,lists,ts,scans,pkg,ncfg]=await Promise.all(['items','tsales','receipts','dashboard','orders','review','vaccounts','vprofiles','limits','lists','tsettings','scans','packages','notify_config'].map(g));
+  const [inv,sal,rec,dash,ord,rev,acc,prof,lim,lists,ts,scans,pkg,ncfg,grp]=await Promise.all(['items','tsales','receipts','dashboard','orders','review','vaccounts','vprofiles','limits','lists','tsettings','scans','packages','notify_config','vgroups'].map(g));
   data={inv:inv.error?[]:inv,sal:sal.error?[]:sal,rec:rec.error?[]:rec,ord:ord.error?[]:ord,rev:rev.error?[]:rev,acc:acc.error?[]:acc,prof:prof.error?[]:prof,lim:lim.error?[]:lim};
-  data.pkg=pkg.error?{items:[],settings:{},state:{}}:pkg;NC=ncfg.error?null:ncfg;DASH=dash;L=lists;TS=ts;SCANS=scans.error?[]:scans;
+  data.grp=grp&&!grp.error?grp:{acc:[],prof:[]};data.pkg=pkg.error?{items:[],settings:{},state:{}}:pkg;NC=ncfg.error?null:ncfg;DASH=dash;L=lists;TS=ts;SCANS=scans.error?[]:scans;
   [inv,sal,dash,lists].forEach(r=>{if(r&&r.error)toast(r.error,true)});
   render();
 }
@@ -651,19 +651,31 @@ function selBar(kind){
 }
 function updBulk(){render()}
 const initial=e=>(String(e||'?').trim()[0]||'?').toUpperCase();
+const groupNames=(kind,all)=>[...new Set([...all.map(x=>x.site),...((data.grp||{})[kind]||[])])].sort((a,b)=>a.localeCompare(b,undefined,{sensitivity:'base'}));
 function groupList(kind,all,cur,title){
-  const g={};all.forEach(x=>g[x.site]=(g[x.site]||0)+1);const names=Object.keys(g).sort();
+  const g={};all.forEach(x=>g[x.site]=(g[x.site]||0)+1);const names=groupNames(kind,all);
   const fn=kind=='acc'?'accGroup':'profGroup';
-  return `<div class="gl"><div class="gh"><div><h4>${title}</h4><small>${names.length} total</small></div><button class="ib blue" title="Import a Valor file" onclick="${kind=='acc'?'accImport':'profImport'}()">＋</button></div>
-  ${names.map(n=>`<div class="grp ${n==cur?'on':''}" onclick="${fn}(${q(n)})"><span class="gico">${esc(initial(n))}</span><div class="gbody"><div class="gname" title="${esc(n)}">${esc(n)}</div><div class="gmeta"><span>${g[n]} Total</span><span>${esc(n)}</span></div></div>
-   <button class="gdel" title="Delete this whole group" onclick="event.stopPropagation();${kind=='acc'?'delGroupAcc':'delGroupProf'}(${q(n)})">🗑</button></div>`).join('')||'<p class="muted">No groups yet. Use ＋ to import a Valor file.</p>'}</div>`;
+  return `<div class="gl"><div class="gh"><div><h4>${title}</h4><small>${names.length} total</small></div><button class="ib blue" title="Create a new group" onclick="newGroupDlg('${kind}')">＋</button></div>
+  ${names.map(n=>`<div class="grp ${n==cur?'on':''}" onclick="${fn}(${q(n)})"><span class="gico">${esc(initial(n))}</span><div class="gbody"><div class="gname" title="${esc(n)}">${esc(n)}</div><div class="gmeta"><span>${g[n]||0} Total</span><span>${esc(n)}</span></div></div>
+   <button class="gdel" style="color:var(--vmute)" title="Rename group" onclick="event.stopPropagation();renameGroupDlg('${kind}',${q(n)})">✎</button><button class="gdel" title="Delete this whole group" onclick="event.stopPropagation();delGroup('${kind}',${q(n)})">🗑</button></div>`).join('')||'<p class="muted">No groups yet. Press ＋ to create one — then add ' + (kind=='acc'?'accounts':'profiles') + ' by hand or import a Valor file.</p>'}</div>`;
 }
 function accGroup(n){VA.site=n;VA.page=0;render()}
 function profGroup(n){VP.site=n;VP.page=0;render()}
-async function delGroupAcc(site){const ids=data.acc.filter(a=>a.site==site).map(a=>a.id);if(!ids.length||!confirm(`Delete all ${ids.length} accounts in “${site}”? There is no undo.`))return;await api('vaccounts/delete',{site,ids});load()}
-async function delGroupProf(site){const ids=data.prof.filter(p=>p.site==site).map(p=>p.id);if(!ids.length||!confirm(`Delete all ${ids.length} profiles in “${site}”, including rejigged copies? There is no undo.`))return;await api('vprofiles/delete',{ids});load()}
+function newGroupDlg(kind){
+  dlg(`<p class="muted">A group is one website or bot task list, for example “Pokemon Center US” or “Walmart”. You can add ${kind=='acc'?'accounts':'profiles'} to it by hand, or import a Valor file into it later.</p><label>Group name</label><input name="name" required maxlength="60" placeholder="e.g. Pokemon Center US" autofocus>`,
+  async fd=>{const r=await api('vgroups/add',{kind,name:fd.name});if(r.error)return r;(kind=='acc'?VA:VP).site=r.name;(kind=='acc'?VA:VP).page=0;toast('Group “'+r.name+'” created');return r});
+}
+function renameGroupDlg(kind,old){
+  dlg(`<label>New name</label><input name="name" required maxlength="60" value="${esc(old)}">`,
+  async fd=>{const r=await api('vgroups/rename',{kind,old,name:fd.name});if(r.error)return r;(kind=='acc'?VA:VP).site=r.name;toast('Renamed');return r});
+}
+async function delGroup(kind,name){
+  const n=(kind=='acc'?data.acc:data.prof).filter(x=>x.site==name).length;
+  if(!confirm(n?`Delete the group “${name}” and its ${n} ${kind=='acc'?'accounts':'profiles'}${kind=='prof'?' (including rejigged copies)':''}? There is no undo.`:`Delete the empty group “${name}”?`))return;
+  await api('vgroups/delete',{kind,name});load()}
+const delGroupAcc=name=>delGroup('acc',name),delGroupProf=name=>delGroup('prof',name);
 function copyText(t,label){try{navigator.clipboard.writeText(t).then(()=>toast('Copied '+(label||'')))}catch(e){toast('Copy not available here',true)}}
-function curSite(kind,all){const sites=[...new Set(all.map(x=>x.site))].sort();const k=kind=='acc'?VA:VP;if(!sites.includes(k.site))k.site=sites[0]||'';return k.site}
+function curSite(kind,all){const sites=groupNames(kind,all);const k=kind=='acc'?VA:VP;if(!sites.includes(k.site))k.site=sites[0]||'';return k.site}
 function accCopy(site,id,field){const a=data.acc.find(x=>x.id==id&&x.site==site);if(a)copyText(a.rec[field]||'',field)}
 async function accClearSession(site,ids){await api('vaccounts/patch',{site,ids,changes:{session:false}});load()}
 async function accDelOne(site,id){if(confirm('Delete this account?')){await api('vaccounts/delete',{site,ids:[id]});load()}}
@@ -685,7 +697,7 @@ function vAcc(){
    <span class="cell1">${sv('contact',esc(a.rec.email))}${a.rec.selected?' <span class="saved" title="Selected in Valor">●</span>':''}${a.rec.proxy?`<div class="cell2">${sv('secret',esc(a.rec.proxy))}</div>`:''}</span>
    <span>${a.rec.password?sv('secret',VA.show?esc(a.rec.password):'••••••••'):'<span class="none">—</span>'}</span>
    <span>${a.rec.session?`<span class="saved">Saved</span> <button class="gdel" title="Clear session" onclick="accClearSession(${q(a.site)},${q([a.id])})">🗑</button>`:'<span class="none">None</span>'}</span>
-   <span class="acts"><button class="ib" title="Copy email" onclick="accCopy(${q(a.site)},${q(a.id)},'email')">⧉</button><button class="ib" title="Copy password" onclick="accCopy(${q(a.site)},${q(a.id)},'password')">🔑</button><button class="ib" title="Edit" onclick="accDlg(${q(a.site)},${q(a.id)})">✎</button><button class="ib red" title="Delete" onclick="accDelOne(${q(a.site)},${q(a.id)})">🗑</button></span></div>`).join('')||`<div class="empty">${all.length?'No accounts match.':'No accounts yet. Use ＋ to import your Valor accounts file.'}</div>`}
+   <span class="acts"><button class="ib" title="Copy email" onclick="accCopy(${q(a.site)},${q(a.id)},'email')">⧉</button><button class="ib" title="Copy password" onclick="accCopy(${q(a.site)},${q(a.id)},'password')">🔑</button><button class="ib" title="Edit" onclick="accDlg(${q(a.site)},${q(a.id)})">✎</button><button class="ib red" title="Delete" onclick="accDelOne(${q(a.site)},${q(a.id)})">🗑</button></span></div>`).join('')||`<div class="empty">${grp.length?'No accounts match.':'This group is empty. Press ＋ above to add an account, or ⤓ to import a Valor file.'}</div>`}
   ${pgr(total,VA.page,size,'pgAcc')}</div></div></div>${siteList()}`;
 }
 function accDlg(site,id){
@@ -695,7 +707,7 @@ function accDlg(site,id){
 }
 async function delAcc(site,id){if(confirm('Delete this account?')){await api('vaccounts/delete',{site,ids:[id]});$('#dlg').close();load()}}
 function accImport(){
-  dlg(`<p class="muted">Choose an accounts file exported from Valor. Existing accounts with the same ID are updated; nothing else is touched.</p><label>Valor accounts file (.json)</label><input type="file" accept=".json" id="impfile" required>`+inp('site','Website (leave blank to use the name inside the file)','')+`<label class="cbl"><input type="checkbox" id="impreplace"> Replace all existing accounts for that website</label>`,
+  dlg(`<p class="muted">Choose an accounts file exported from Valor. Existing accounts with the same ID are updated; nothing else is touched.</p><label>Valor accounts file (.json)</label><input type="file" accept=".json" id="impfile" required>`+inp('site','Group / website (leave blank to use the name inside the file)',VA.site||'')+`<label class="cbl"><input type="checkbox" id="impreplace"> Replace all existing accounts for that website</label>`,
   async fd=>{const f=$('#impfile').files[0];if(!f)return{error:'Choose a file'};const r=await api('vaccounts/import',{text:await f.text(),site:fd.site,replace:$('#impreplace').checked});if(!r.error)toast(`${r.site}: ${r.added} added, ${r.updated} updated`);return r});
 }
 function accExport(){
@@ -731,7 +743,7 @@ function vProf(){
    <span><div class="cell1">${sv('addr',esc(sh.addressLine1||''))}</div><div class="cell2">${sv('addr',esc([sh.addressLine2,[sh.city,sh.state].filter(Boolean).join(', ')+(sh.zipCode?' '+sh.zipCode:'')].filter(Boolean).join(' · ')))}</div></span>
    <span title="${r.billingSameAsShipping?'Billing is the same as shipping':'Different billing: '+esc([bi.addressLine1,bi.city,bi.state,bi.zipCode].filter(Boolean).join(', '))}"><span class="dot ${r.billingSameAsShipping?'':'no'}"></span></span>
    <span>${sv('card',`${brandBadge(b)}<span style="display:inline-block;vertical-align:middle;line-height:1.15"><b>${esc(num.slice(-4)||'••••')}</b><br><span class="cell2">${esc(r.card.expiration||'')}</span></span>`)}</span>
-   <span class="acts"><button class="ib" title="Edit" onclick="profDlg(${q(p.id)})">✎</button>${p.group_id?'':`<button class="ib" title="Rejig into copies" onclick="jigDlg(${q(p.id)})">↻</button>`}<button class="ib" title="Duplicate" onclick="profDup(${q(p.id)})">⧉</button><button class="ib red" title="Delete" onclick="profDelOne(${q(p.id)})">🗑</button></span></div>`}).join('')||`<div class="empty">${all.length?'No profiles match.':'No profiles yet. Use ＋ to import your Valor profiles file.'}</div>`}
+   <span class="acts"><button class="ib" title="Edit" onclick="profDlg(${q(p.id)})">✎</button>${p.group_id?'':`<button class="ib" title="Rejig into copies" onclick="jigDlg(${q(p.id)})">↻</button>`}<button class="ib" title="Duplicate" onclick="profDup(${q(p.id)})">⧉</button><button class="ib red" title="Delete" onclick="profDelOne(${q(p.id)})">🗑</button></span></div>`}).join('')||`<div class="empty">${grp.length?'No profiles match.':'This group is empty. Press ＋ above to create a profile, or ⤓ to import a Valor file.'}</div>`}
   ${pgr(total,VP.page,size,'pgProf')}</div></div></div>${siteList()}`;
 }
 const BLANK={name:'',email:'',phoneNumber:'',billingSameAsShipping:true,oneCheckout:false,quickTask:false,card:{holder:'',number:'',expiration:'',cvv:'',type:''},
@@ -740,6 +752,13 @@ const BLANK={name:'',email:'',phoneNumber:'',billingSameAsShipping:true,oneCheck
 const addrFields=(k,rec)=>fld(k+'.firstName','First name',rec)+fld(k+'.lastName','Last name',rec)+fld(k+'.addressLine1','Address line 1',rec)+fld(k+'.addressLine2','Address line 2',rec)+fld(k+'.city','City',rec)+fld(k+'.state','State',rec)+fld(k+'.zipCode','ZIP / postal code',rec)+fld(k+'.countryCode','Country code (US)',rec)+fld(k+'.countryName','Country name',rec);
 function profDlg(id,defSite){
   const p=id?data.prof.find(x=>x.id==id):null;
+  let savedId=p?p.id:null;const jigCount=p?data.prof.filter(x=>x.group_id==p.id).length:0;
+  const saveProfForm=async()=>{const r=readForm(rec);
+    if(r.billingSameAsShipping&&(!p||!p.rec.billingSameAsShipping)){r.billing={...r.billing,...r.shipping}}
+    if(!r.card.type&&r.card.number){const n=r.card.number.replace(/\D/g,'');r.card.type=/^4/.test(n)?'visa':/^(5[1-5]|2[2-7])/.test(n)?'mastercard':/^3[47]/.test(n)?'amex':/^(6011|65)/.test(n)?'discover':''}
+    const pid=savedId||(window.crypto&&crypto.randomUUID?crypto.randomUUID():'p-'+Date.now()+'-'+Math.random().toString(16).slice(2));
+    const res=await api('vprofiles/save',{site:$('#profsite').value,rec:r,id:pid,group_id:p?p.group_id:null});
+    if(!res.error)savedId=pid;return {res,pid}};
   const rec=p?p.rec:JSON.parse(JSON.stringify(BLANK));
   const hasExtra=['personalCustomsCode','pinCode','idNumber','birthday'].some(k=>k in rec);
   dlg(`<div class="grid2"><div><label>Website</label><input id="profsite" list="sites" value="${esc(p?p.site:(defSite||''))}" required></div>`+fld('name','Profile name',rec,'text','required')+fld('email','Email',rec)+fld('phoneNumber','Phone number',rec)+`</div>
@@ -749,15 +768,22 @@ function profDlg(id,defSite){
   <fieldset><legend>Shipping</legend><div class="grid2">${addrFields('shipping',rec)}</div></fieldset>
   <fieldset><legend>Billing</legend><div class="grid2">${addrFields('billing',rec)}</div></fieldset>
   <fieldset><legend>Other (optional)</legend><div class="grid2">${['personalCustomsCode','pinCode','idNumber','birthday'].map(k=>fld(k,{personalCustomsCode:'Personal customs code',pinCode:'PIN code',idNumber:'ID number',birthday:'Birthday'}[k],rec)).join('')}</div></fieldset>`
+  +(p&&p.group_id?'':`<fieldset><legend>Jig address</legend><p class="muted" style="margin:0 0 8px">Makes copies of this profile with alternate spellings of the same address (St / Street, N / North, Apt / Unit / #). City, state and ZIP never change. Saves this profile first, so the copies use what you see above.${jigCount?` <b>Creating copies replaces its ${jigCount} existing copies.</b>`:''}</p>
+  <div class="grid2"><div><label>How many copies</label><input type="number" id="jigcount" value="10" min="1" max="100"></div><div><label>&nbsp;</label><label class="cbl"><input type="checkbox" id="jigunits" checked> Include unit-line styles</label></div></div>
+  <div class="bar" style="margin:8px 0 0"><button type="button" class="b" id="jigprev">Save &amp; preview</button><button type="button" class="b p" id="jigmake">Save &amp; create copies</button></div><div id="jigout" class="muted" style="margin-top:8px;max-height:160px;overflow:auto"></div></fieldset>`)
   +(p?`<p><button type="button" class="b" onclick="delProf(${q(p.id)})">Delete profile</button></p>`:''),
-  async()=>{const r=readForm(rec);
-    if(r.billingSameAsShipping&&(!p||!p.rec.billingSameAsShipping)){r.billing={...r.billing,...r.shipping}}
-    if(!r.card.type&&r.card.number){const n=r.card.number.replace(/\D/g,'');r.card.type=/^4/.test(n)?'visa':/^(5[1-5]|2[2-7])/.test(n)?'mastercard':/^3[47]/.test(n)?'amex':/^(6011|65)/.test(n)?'discover':''}
-    return api('vprofiles/save',{site:$('#profsite').value,rec:r,id:p?p.id:null,group_id:p?p.group_id:null})},'wide');
+  async()=>{const r=await saveProfForm();return r.res},'wide');
+  const jigRun=async make=>{
+    const out=$('#jigout');out.textContent='Saving…';const r=await saveProfForm();if(r.res.error){out.innerHTML='<span class="neg">'+esc(r.res.error)+'</span>';return}
+    const j=await api('vprofiles/jig',{id:r.pid,count:Math.max(1,Math.min(100,+$('#jigcount').value||10)),use_units:$('#jigunits').checked,seed:'',save:make,replace:true});
+    if(j.error){out.innerHTML='<span class="neg">'+esc(j.error)+'</span>';return}
+    out.innerHTML=`<b>${make?'Created':'Preview of'} ${j.variants.length} ${make?'copies':'variants'}</b><br>`+j.variants.map(v=>esc(v.addressLine1)+(v.addressLine2?', '+esc(v.addressLine2):'')).join('<br>');
+    if(make){toast(j.variants.length+' jig copies created');load()}};
+  if($('#jigprev')){$('#jigprev').onclick=()=>jigRun(false);$('#jigmake').onclick=()=>jigRun(true)}
 }
 async function delProf(id){if(confirm('Delete this profile (and its rejigged copies)?')){await api('vprofiles/delete',{ids:[id]});$('#dlg').close();load()}}
 function profImport(){
-  dlg(`<p class="muted">Choose a profiles file exported from Valor. Profiles with the same ID are updated; every field in the file is kept exactly as-is.</p><label>Valor profiles file (.json)</label><input type="file" accept=".json" id="impfile" required><label>Website these profiles are for</label><input name="site" list="sites" required placeholder="e.g. Pokemon Center US"><label class="cbl"><input type="checkbox" id="impreplace"> Replace all existing profiles for that website</label>`+siteList(),
+  dlg(`<p class="muted">Choose a profiles file exported from Valor. Profiles with the same ID are updated; every field in the file is kept exactly as-is.</p><label>Valor profiles file (.json)</label><input type="file" accept=".json" id="impfile" required><label>Website these profiles are for</label><input name="site" list="sites" required value="${esc(VP.site||'')}" placeholder="e.g. Pokemon Center US"><label class="cbl"><input type="checkbox" id="impreplace"> Replace all existing profiles for that website</label>`+siteList(),
   async fd=>{const f=$('#impfile').files[0];if(!f)return{error:'Choose a file'};const r=await api('vprofiles/import',{text:await f.text(),site:fd.site,replace:$('#impreplace').checked});if(!r.error)toast(`${r.added} added, ${r.updated} updated`);return r});
 }
 function profExport(){

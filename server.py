@@ -182,6 +182,8 @@ class H(BaseHTTPRequestHandler):
                 return self.send(vdata.list_accounts(c))
             if u.path == "/api/vprofiles":
                 return self.send(vdata.list_profiles(c))
+            if u.path == "/api/vgroups":
+                return self.send(vdata.list_groups(c))
             if u.path == "/api/version":
                 return self.send({"build": BUILD})
             if u.path == "/api/update/check":
@@ -342,6 +344,23 @@ class H(BaseHTTPRequestHandler):
                 return self.send({"ok": ok})
             if u.path == "/api/orders/delete":
                 c.execute("DELETE FROM orders WHERE id=?", (b["id"],))
+                c.commit()
+                return self.send({"ok": True})
+            if u.path == "/api/vgroups/add":
+                name = vdata.add_group(c, b.get("kind"), b.get("name"))
+                c.commit()
+                return self.send({"ok": True, "name": name})
+            if u.path == "/api/vgroups/rename":
+                name = vdata.rename_group(c, b.get("kind"), b.get("old"), b.get("name"))
+                c.commit()
+                return self.send({"ok": True, "name": name})
+            if u.path == "/api/vgroups/delete":
+                kind, name = b.get("kind"), b.get("name")
+                if kind == "prof":
+                    c.execute("DELETE FROM vprofiles WHERE site=?", (name,))
+                else:
+                    c.execute("DELETE FROM vaccounts WHERE site=?", (name,))
+                vdata.remove_group_name(c, kind, name)
                 c.commit()
                 return self.send({"ok": True})
             if u.path == "/api/vprofiles/save":
