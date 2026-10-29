@@ -22,3 +22,12 @@ Exports are saved to `Documents\Valor Inventory Agent Exports`.
 - **Settings:** iCloud email + app-specific password (account.apple.com > Sign-In and Security) for order sync.
 
 Passwords and card numbers are stored unencrypted on your PC, so use BitLocker and don't share that folder.
+
+## Updates
+Open the **Updates** tab: Check for updates, Download update (with progress), Install & restart. The installer
+overwrites the program files and reopens the app; your data is kept. If your GitHub repo is private, paste a
+read-only GitHub token on that tab.
+
+## Email
+Settings > "Load my folders" lets you pick a dedicated folder (e.g. Pokemon Center). Every email in a folder other
+than INBOX is read. The **Inbox** tab shows your mail read-only, with what the scraper makes of each email.

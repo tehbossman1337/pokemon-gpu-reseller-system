@@ -43,6 +43,11 @@ def rows(c, q, args=()):
     return [dict(r) for r in c.execute(q, args)]
 
 
+def get_token(c):
+    r = c.execute("SELECT value FROM settings WHERE key='github_token'").fetchone()
+    return r[0] if r else ""
+
+
 def run_sync(rescan=False):
     SYNC.update(running=True, log=[], stats=None, error=None)
     try:
@@ -110,7 +115,26 @@ class H(BaseHTTPRequestHandler):
             if u.path == "/api/version":
                 return self.send({"build": BUILD})
             if u.path == "/api/update/check":
-                return self.send(updater.check())
+                return self.send(updater.check(get_token(c)))
+            if u.path == "/api/update/status":
+                return self.send({**updater.STATE, "build": BUILD, "has_token": bool(get_token(c))})
+            if u.path == "/api/inbox/list":
+                qs = parse_qs(u.query)
+                try:
+                    return self.send({"ok": True, **mail_sync.inbox_list(qs.get("folder", ["INBOX"])[0], int(qs.get("limit", ["50"])[0]), qs.get("q", [""])[0])})
+                except Exception as e:
+                    return self.send({"ok": False, "error": str(e)})
+            if u.path == "/api/inbox/message":
+                qs = parse_qs(u.query)
+                try:
+                    return self.send({"ok": True, **mail_sync.inbox_message(qs.get("folder", ["INBOX"])[0], qs["uid"][0])})
+                except Exception as e:
+                    return self.send({"ok": False, "error": str(e)})
+            if u.path == "/api/mail/folders":
+                try:
+                    return self.send({"ok": True, "folders": mail_sync.list_folders()})
+                except Exception as e:
+                    return self.send({"ok": False, "error": str(e)})
             if u.path == "/api/limits":
                 return self.send(core.limits_report(c))
             if u.path == "/api/sync":
@@ -136,7 +160,7 @@ class H(BaseHTTPRequestHandler):
             if u.path == "/api/settings":
                 old = mail_sync.load_conf()
                 mail_sync.save_conf(b.get("email", old["email"]), b.get("password") or old["password"],
-                                    b.get("folder", "INBOX") or "INBOX", int(b.get("days", 30) or 30))
+                                    b.get("folder", "INBOX") or "INBOX", int(b["days"]) if str(b.get("days", "")).strip().isdigit() else 30)
                 return self.send({"ok": True})
             if u.path == "/api/inventory":
                 core.add_to_inventory(c, b.get("sku", ""), b["name"], int(b.get("qty", 0)), float(b.get("avg_cost", 0)))
@@ -282,8 +306,19 @@ class H(BaseHTTPRequestHandler):
                 except Exception:
                     pass
                 return self.send({"ok": True, "path": d})
+            if u.path == "/api/inbox/apply":
+                try:
+                    return self.send({"ok": True, **mail_sync.inbox_apply(b.get("folder", "INBOX"), str(b["uid"]))})
+                except Exception as e:
+                    return self.send({"ok": False, "error": str(e)})
+            if u.path == "/api/update/download":
+                return self.send(updater.start_download(b.get("url", ""), get_token(c), int(b.get("size") or 0)))
             if u.path == "/api/update/install":
-                return self.send(updater.install(b.get("url", "")))
+                return self.send(updater.install())
+            if u.path == "/api/update/token":
+                c.execute("INSERT OR REPLACE INTO settings VALUES('github_token',?)", ((b.get("token") or "").strip(),))
+                c.commit()
+                return self.send({"ok": True})
             if u.path == "/api/parse_test":
                 ev, why = parsers.parse_email(b.get("sender", ""), b.get("subject", ""), b.get("body", ""))
                 return self.send({"ok": True, "event": ev, "reason": why})

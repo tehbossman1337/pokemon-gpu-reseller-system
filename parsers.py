@@ -49,7 +49,7 @@ BRAND_WORDS = {"Pokemon Center": ["pokemon center", "pokémon center", "pokemonc
                "Costco": ["costco"], "Sam's Club": ["sam's club", "samsclub"]}
 
 
-def detect_retailer(sender, extra=""):
+def detect_retailer(sender, extra="", default=None):
     """Match by sender domain; if that fails (forwarded / Hide-My-Email mail), fall back to
     the Reply-To header or brand names in the subject/body head passed via `extra`."""
     s = (sender or "").lower()
@@ -60,7 +60,7 @@ def detect_retailer(sender, extra=""):
     for name, doms in RETAILERS.items():
         if any(d in e for d in doms):
             return name
-    return None
+    return default
 
 
 def detect_status(subject, body):
@@ -102,9 +102,9 @@ def parse_items(body):
     return items
 
 
-def parse_email(sender, subject, body, date_header=None, extra=""):
+def parse_email(sender, subject, body, date_header=None, extra="", default=None):
     """Return (event_dict | None, reason_if_none)."""
-    retailer = detect_retailer(sender, extra or f"{subject}\n{(body or '')[:800]}")
+    retailer = detect_retailer(sender, extra or f"{subject}\n{(body or '')[:800]}", default)
     if not retailer:
         return None, "unknown sender"
     status = detect_status(subject, body)
