@@ -11,6 +11,7 @@ import re
 import subprocess
 import core
 import mail_sync
+import static_embedded
 import vdata
 
 STATIC = os.path.join(core.RES_DIR, "static")
@@ -66,11 +67,17 @@ class H(BaseHTTPRequestHandler):
         if not u.path.startswith("/api/"):
             f = "index.html" if u.path in ("/", "") else u.path.lstrip("/")
             p = os.path.normpath(os.path.join(STATIC, f))
-            if not p.startswith(STATIC) or not os.path.isfile(p):
+            if f == "index.html" and not os.path.isfile(p):
+                data = static_embedded.HTML.encode("utf-8")
+                ctype = "text/html; charset=utf-8"
+            elif p.startswith(STATIC) and os.path.isfile(p):
+                data = open(p, "rb").read()
+                ctype = mimetypes.guess_type(p)[0] or "text/plain"
+            else:
                 return self.send({"error": "not found"}, 404)
-            data = open(p, "rb").read()
             self.send_response(200)
-            self.send_header("Content-Type", mimetypes.guess_type(p)[0] or "text/plain")
+            self.send_header("Content-Type", ctype)
+            self.send_header("Content-Length", str(len(data)))
             self.end_headers()
             self.wfile.write(data)
             return

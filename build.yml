@@ -1,0 +1,27 @@
+name: Build Windows installer
+on:
+  workflow_dispatch:
+  push:
+    branches: [main, master]
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with: { python-version: "3.12" }
+      - run: python -m pip install pyinstaller pywebview pythonnet
+      - name: Smoke-test the server code
+        run: python -c "import server, vdata, jig, mail_sync, parsers, static_embedded; print('imports ok')"
+      - name: Build app
+        run: python -m PyInstaller --noconfirm --windowed --onedir --name ValorInventoryAgent --icon app.ico --collect-all webview app.py
+      - name: Check the build produced the exe
+        run: if (!(Test-Path dist/ValorInventoryAgent/ValorInventoryAgent.exe)) { throw "exe missing" }
+      - name: Install Inno Setup
+        run: choco install innosetup -y --no-progress
+      - name: Build installer
+        run: '& "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" installer.iss'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ValorInventoryAgent-Setup
+          path: installer_out/ValorInventoryAgent-Setup.exe
