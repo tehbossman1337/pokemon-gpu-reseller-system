@@ -19,6 +19,8 @@ Compression=lzma2
 SolidCompression=yes
 WizardStyle=modern
 DisableProgramGroupPage=yes
+CloseApplications=yes
+RestartApplications=no
 
 [Tasks]
 Name: "desktopicon"; Description: "Create a desktop shortcut"; Flags: checkedonce
@@ -32,5 +34,7 @@ Name: "{autodesktop}\{#AppName}"; Filename: "{app}\ValorInventoryAgent.exe"; Tas
 
 [Run]
 Filename: "{app}\ValorInventoryAgent.exe"; Description: "Launch {#AppName}"; Flags: nowait postinstall skipifsilent
+
+Filename: "{app}\ValorInventoryAgent.exe"; Flags: nowait; Check: WizardSilent
 
 ; Your data lives in %APPDATA%\ValorInventoryAgent and is NOT removed on uninstall.

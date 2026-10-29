@@ -22,7 +22,7 @@ STATUS_RULES = [  # first match wins; checked against subject, then body head
     ("cancelled", r"cancel+ed|has been cancel|order cancellation|unable to (fulfill|ship)|we.?re sorry.*order"),
     ("delivered", r"\bdelivered\b|has been delivered|was delivered|ready for pickup|picked up"),
     ("shipped", r"\bshipped\b|on its way|has shipped|out for delivery|tracking number|shipment (confirmation|notification)"),
-    ("confirmed", r"order (confirmation|confirmed|received|placed)|thank(s| you) for (your )?order|we.?ve received your order|your order"),
+    ("confirmed", r"order (confirmation|confirmed|received|placed|summary|details)|thank(s| you) for (your|shopping|ordering).{0,60}|thank(s| you) for (your )?.{0,40}order|we.?ve received your order|your .{0,40}order|order #|confirmation"),
 ]
 
 ORDER_NO = [
@@ -44,10 +44,21 @@ ITEM_LINE = [
 SKU_RE = re.compile(r"(?:sku|dpci|item\s*#|item number|model)\s*[:#]?\s*([A-Z0-9\-]{5,20})", re.I)
 
 
-def detect_retailer(sender):
+BRAND_WORDS = {"Pokemon Center": ["pokemon center", "pokémon center", "pokemoncenter"], "Target": ["target.com", "target order"],
+               "Walmart": ["walmart"], "Best Buy": ["best buy", "bestbuy"], "GameStop": ["gamestop"],
+               "Costco": ["costco"], "Sam's Club": ["sam's club", "samsclub"]}
+
+
+def detect_retailer(sender, extra=""):
+    """Match by sender domain; if that fails (forwarded / Hide-My-Email mail), fall back to
+    the Reply-To header or brand names in the subject/body head passed via `extra`."""
     s = (sender or "").lower()
     for name, doms in RETAILERS.items():
         if any(d in s for d in doms):
+            return name
+    e = (extra or "").lower()
+    for name, doms in RETAILERS.items():
+        if any(d in e for d in doms):
             return name
     return None
 
@@ -91,9 +102,9 @@ def parse_items(body):
     return items
 
 
-def parse_email(sender, subject, body, date_header=None):
+def parse_email(sender, subject, body, date_header=None, extra=""):
     """Return (event_dict | None, reason_if_none)."""
-    retailer = detect_retailer(sender)
+    retailer = detect_retailer(sender, extra or f"{subject}\n{(body or '')[:800]}")
     if not retailer:
         return None, "unknown sender"
     status = detect_status(subject, body)

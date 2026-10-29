@@ -11,11 +11,18 @@ import re
 import subprocess
 import core
 import mail_sync
+import parsers
+import updater
 import static_embedded
 import vdata
 
 STATIC = os.path.join(core.RES_DIR, "static")
 SYNC = {"running": False, "log": [], "stats": None, "error": None}
+try:
+    import build_info
+    BUILD = build_info.BUILD
+except Exception:
+    BUILD = 0
 
 
 def exports_dir():
@@ -36,10 +43,10 @@ def rows(c, q, args=()):
     return [dict(r) for r in c.execute(q, args)]
 
 
-def run_sync():
+def run_sync(rescan=False):
     SYNC.update(running=True, log=[], stats=None, error=None)
     try:
-        SYNC["stats"] = mail_sync.sync(progress=lambda m: SYNC["log"].append(m))
+        SYNC["stats"] = mail_sync.sync(progress=lambda m: SYNC["log"].append(m), rescan=rescan)
     except Exception as e:  # surfaced in the UI
         SYNC["error"] = str(e)
     finally:
@@ -100,6 +107,10 @@ class H(BaseHTTPRequestHandler):
                 return self.send(vdata.list_accounts(c))
             if u.path == "/api/vprofiles":
                 return self.send(vdata.list_profiles(c))
+            if u.path == "/api/version":
+                return self.send({"build": BUILD})
+            if u.path == "/api/update/check":
+                return self.send(updater.check())
             if u.path == "/api/limits":
                 return self.send(core.limits_report(c))
             if u.path == "/api/sync":
@@ -120,7 +131,7 @@ class H(BaseHTTPRequestHandler):
             if u.path == "/api/sync":
                 if SYNC["running"]:
                     return self.send({"error": "already running"}, 409)
-                threading.Thread(target=run_sync, daemon=True).start()
+                threading.Thread(target=run_sync, kwargs={"rescan": bool(b.get("rescan"))}, daemon=True).start()
                 return self.send({"ok": True})
             if u.path == "/api/settings":
                 old = mail_sync.load_conf()
@@ -271,6 +282,11 @@ class H(BaseHTTPRequestHandler):
                 except Exception:
                     pass
                 return self.send({"ok": True, "path": d})
+            if u.path == "/api/update/install":
+                return self.send(updater.install(b.get("url", "")))
+            if u.path == "/api/parse_test":
+                ev, why = parsers.parse_email(b.get("sender", ""), b.get("subject", ""), b.get("body", ""))
+                return self.send({"ok": True, "event": ev, "reason": why})
             if u.path == "/api/limits/save":
                 if not b.get("retailer") or not b.get("product") or int(b.get("max_qty") or 0) < 1:
                     return self.send({"error": "Retailer, product and a limit of at least 1 are required"}, 400)

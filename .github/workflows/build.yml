@@ -1,4 +1,6 @@
 name: Build Windows installer
+permissions:
+  contents: write
 on:
   workflow_dispatch:
   push:
@@ -7,14 +9,18 @@ jobs:
   build:
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
         with: { python-version: "3.12" }
       - run: python -m pip install pyinstaller pywebview pythonnet
+      - name: Stamp build number
+        shell: pwsh
+        run: |
+          "BUILD = ${{ github.run_number }}`nREPO = `"${{ github.repository }}`"" | Set-Content -Encoding utf8 build_info.py
       - name: Smoke-test the server code
-        run: python -c "import server, vdata, jig, mail_sync, parsers; print('imports ok')"
+        run: python -c "import server, vdata, jig, mail_sync, parsers, static_embedded; print('imports ok')"
       - name: Build app
-        run: python -m PyInstaller --noconfirm --windowed --onedir --name ValorInventoryAgent --icon app.ico --add-data "static;static" --collect-all webview app.py
+        run: python -m PyInstaller --noconfirm --windowed --onedir --name ValorInventoryAgent --icon app.ico --collect-all webview app.py
       - name: Check the build produced the exe
         run: if (!(Test-Path dist/ValorInventoryAgent/ValorInventoryAgent.exe)) { throw "exe missing" }
       - name: Install Inno Setup
@@ -25,3 +31,8 @@ jobs:
         with:
           name: ValorInventoryAgent-Setup
           path: installer_out/ValorInventoryAgent-Setup.exe
+      - name: Publish release (so the app can update itself)
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "build-${{ github.run_number }}" installer_out/ValorInventoryAgent-Setup.exe --title "Build ${{ github.run_number }}" --notes "Automatic build ${{ github.run_number }}" --latest
