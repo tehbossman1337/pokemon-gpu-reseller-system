@@ -4,6 +4,7 @@ import mimetypes
 import sys
 import os
 import threading
+import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import urlparse, parse_qs
 
@@ -76,6 +77,35 @@ class H(BaseHTTPRequestHandler):
         return json.loads(self.rfile.read(n) or b"{}")
 
     def do_GET(self):
+        try:
+            self._get()
+        except (BrokenPipeError, ConnectionResetError):
+            pass
+        except Exception:
+            self._crash()
+
+    def do_POST(self):
+        try:
+            self._post()
+        except (BrokenPipeError, ConnectionResetError):
+            pass
+        except Exception:
+            self._crash()
+
+    def _crash(self):
+        import traceback
+        tb = traceback.format_exc()
+        try:
+            with open(os.path.join(core.DATA_DIR, "app.log"), "a", encoding="utf-8") as f:
+                f.write(time.strftime("%Y-%m-%d %H:%M:%S ") + self.path + "\n" + tb + "\n")
+        except Exception:
+            pass
+        try:
+            self.send({"error": "Internal error: " + tb.strip().splitlines()[-1]}, 500)
+        except Exception:
+            pass
+
+    def _get(self):
         u = urlparse(self.path)
         if not u.path.startswith("/api/"):
             f = "index.html" if u.path in ("/", "") else u.path.lstrip("/")
@@ -163,7 +193,7 @@ class H(BaseHTTPRequestHandler):
         finally:
             c.close()
 
-    def do_POST(self):
+    def _post(self):
         u = urlparse(self.path)
         b = self.body()
         c = core.connect()

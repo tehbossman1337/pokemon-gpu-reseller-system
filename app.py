@@ -34,9 +34,21 @@ def fallback_window(url):
 
 
 def main():
+    _log("starting")
     srv, port = server.make_server(8765)
     threading.Thread(target=srv.serve_forever, daemon=True).start()
     url = f"http://127.0.0.1:{port}"
+    import urllib.request
+    for _ in range(50):  # wait until the page is really being served before opening the window
+        try:
+            urllib.request.urlopen(url + "/api/version", timeout=2).read()
+            break
+        except Exception as e:
+            err = repr(e)
+            time.sleep(0.2)
+    else:
+        _log("server did not answer: " + err)
+    _log("serving at " + url)
     if "--browser" in sys.argv:
         return fallback_window(url)
     try:
