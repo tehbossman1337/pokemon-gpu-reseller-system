@@ -75,6 +75,26 @@ CREATE TABLE IF NOT EXISTS processed_emails(
   outcome TEXT,
   processed_at TEXT
 );
+CREATE TABLE IF NOT EXISTS items(
+  id INTEGER PRIMARY KEY, sku TEXT NOT NULL UNIQUE, category TEXT DEFAULT 'Pokemon Card', name TEXT NOT NULL,
+  pokemon_set TEXT DEFAULT '', card_no TEXT DEFAULT '', condition TEXT DEFAULT '', grading TEXT DEFAULT '',
+  qty INTEGER DEFAULT 1, added_by TEXT DEFAULT '', purchase_date TEXT DEFAULT '', purchase_price REAL DEFAULT 0,
+  purchase_source TEXT DEFAULT '', listing_platform TEXT DEFAULT '', listed_price REAL DEFAULT 0, currency TEXT DEFAULT 'USD',
+  market_price REAL DEFAULT 0, location TEXT DEFAULT '', notes TEXT DEFAULT '', created_at TEXT, updated_at TEXT
+);
+CREATE TABLE IF NOT EXISTS tsales(
+  id INTEGER PRIMARY KEY, sku TEXT NOT NULL, sale_date TEXT, sold_by TEXT DEFAULT '', platform TEXT DEFAULT '', buyer TEXT DEFAULT '',
+  sale_price REAL DEFAULT 0, ship_charged REAL DEFAULT 0, ship_cost REAL DEFAULT 0, other_fees REAL DEFAULT 0,
+  qty INTEGER DEFAULT 1, notes TEXT DEFAULT '', created_at TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_tsales_sku ON tsales(sku);
+CREATE TABLE IF NOT EXISTS receipts(
+  id INTEGER PRIMARY KEY, date TEXT, vendor TEXT DEFAULT '', category TEXT DEFAULT '', description TEXT DEFAULT '', sku TEXT DEFAULT '',
+  amount REAL DEFAULT 0, method TEXT DEFAULT '', ref TEXT DEFAULT '', notes TEXT DEFAULT ''
+);
+CREATE TABLE IF NOT EXISTS fees(platform TEXT PRIMARY KEY, fee_pct REAL DEFAULT 0, fixed REAL DEFAULT 0, processing TEXT DEFAULT '', notes TEXT DEFAULT '');
+CREATE TABLE IF NOT EXISTS currencies(code TEXT PRIMARY KEY, name TEXT, rate REAL DEFAULT 1);
+CREATE TABLE IF NOT EXISTS scans(id INTEGER PRIMARY KEY, ts TEXT, action TEXT, sku TEXT, result TEXT);
 CREATE TABLE IF NOT EXISTS vaccounts(
   site TEXT NOT NULL, id TEXT NOT NULL, email TEXT NOT NULL, data TEXT NOT NULL,
   PRIMARY KEY(site, id)
@@ -107,10 +127,14 @@ def now():
 
 
 def connect(path=None):
-    c = sqlite3.connect(path or DB_PATH)
+    c = sqlite3.connect(path or DB_PATH, timeout=30)
     c.row_factory = sqlite3.Row
     c.execute("PRAGMA foreign_keys=ON")
+    c.execute("PRAGMA journal_mode=WAL")
     c.executescript(SCHEMA)
+    import tracker  # local import: tracker needs this module's helpers
+    tracker.ensure_seed(c)
+    tracker.migrate_legacy(c)
     return c
 
 
@@ -121,64 +145,53 @@ def norm(s):
     return " ".join(s.split())
 
 
-# ---------------------------------------------------------------- inventory
-def find_inventory(c, sku, name):
+# ---------------------------------------------------------------- inventory (SKU lots, see tracker.py)
+def find_item(c, sku, name):
     if sku:
-        r = c.execute("SELECT * FROM inventory WHERE sku=?", (sku,)).fetchone()
+        r = c.execute("SELECT * FROM items WHERE sku=?", (sku.upper(),)).fetchone()
         if r:
             return r
     n = norm(name)
-    for r in c.execute("SELECT * FROM inventory"):
+    for r in c.execute("SELECT * FROM items"):
         if norm(r["name"]) == n:
             return r
     return None
 
 
-def add_to_inventory(c, sku, name, qty, unit_cost):
-    r = find_inventory(c, sku, name)
-    t = now()
+def add_to_inventory(c, sku, name, qty, unit_cost, source="", when=""):
+    """Add received units. Same SKU/name -> bigger lot with a weighted-average purchase price."""
+    import tracker
+    qty = max(1, int(qty or 1))
+    unit_cost = float(unit_cost or 0)
+    r = find_item(c, sku, name)
     if r:
-        old_q, old_c = r["qty"], r["avg_cost"] or 0
-        new_q = old_q + qty
-        if old_q <= 0 or not old_c:
-            avg = unit_cost or old_c
-        else:
-            avg = (old_q * old_c + qty * unit_cost) / new_q if new_q else old_c
-        c.execute(
-            "UPDATE inventory SET qty=?, avg_cost=?, sku=COALESCE(NULLIF(sku,''),?), updated_at=? WHERE id=?",
-            (new_q, round(avg, 4), sku or "", t, r["id"]),
-        )
+        oq, op = r["qty"], r["purchase_price"] or 0
+        avg = unit_cost if (not op) else (oq * op + qty * unit_cost) / (oq + qty) if unit_cost else op
+        c.execute("UPDATE items SET qty=?, purchase_price=?, updated_at=? WHERE id=?", (oq + qty, round(avg, 4), now(), r["id"]))
         return r["id"]
-    cur = c.execute(
-        "INSERT INTO inventory(sku,name,qty,avg_cost,created_at,updated_at) VALUES(?,?,?,?,?,?)",
-        (sku or "", name, qty, unit_cost or 0, t, t),
-    )
-    return cur.lastrowid
+    cat = tracker.infer_category(name)
+    sku = (sku or "").upper()
+    if not sku or c.execute("SELECT 1 FROM items WHERE sku=?", (sku,)).fetchone():
+        sku = tracker.next_sku(c, cat)
+    for attempt in range(6):
+        try:
+            return c.execute(
+                "INSERT INTO items(sku,category,name,qty,purchase_date,purchase_price,purchase_source,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?)",
+                (sku, cat, name, qty, (when or now())[:10], unit_cost, source, now(), now())).lastrowid
+        except sqlite3.IntegrityError:  # another thread took this SKU a moment ago
+            sku = tracker.next_sku(c, cat)
+    raise ValueError("Could not pick a free SKU")
 
 
 def receive_order(c, order_id):
-    """Move an order's items into on-hand inventory (once)."""
+    """Move an order's items into inventory (once)."""
     o = c.execute("SELECT * FROM orders WHERE id=?", (order_id,)).fetchone()
     if not o or o["received"] or o["status"] == "cancelled":
         return False
     for it in c.execute("SELECT * FROM order_items WHERE order_id=?", (order_id,)).fetchall():
-        add_to_inventory(c, it["sku"], it["name"], it["qty"], it["unit_price"])
+        add_to_inventory(c, it["sku"], it["name"], it["qty"], it["unit_price"], o["retailer"], o["order_date"] or "")
     c.execute("UPDATE orders SET received=1, updated_at=? WHERE id=?", (now(), order_id))
     return True
-
-
-def record_sale(c, inventory_id, qty, sale_price, fees=0, shipping=0, platform="", sold_at=None):
-    r = c.execute("SELECT * FROM inventory WHERE id=?", (inventory_id,)).fetchone()
-    if not r:
-        raise ValueError("Inventory item not found")
-    if qty < 1 or qty > r["qty"]:
-        raise ValueError(f"Only {r['qty']} on hand")
-    c.execute(
-        "INSERT INTO sales(inventory_id,item_name,qty,sale_price,fees,shipping,cost_basis,platform,sold_at) "
-        "VALUES(?,?,?,?,?,?,?,?,?)",
-        (inventory_id, r["name"], qty, sale_price, fees, shipping, r["avg_cost"] or 0, platform, sold_at or now()),
-    )
-    c.execute("UPDATE inventory SET qty=qty-?, updated_at=? WHERE id=?", (qty, now(), inventory_id))
 
 
 # ------------------------------------------------------------------- orders
@@ -234,31 +247,17 @@ def apply_event(c, ev, auto_receive=True):
 
 # ------------------------------------------------------------------ summary
 def summary(c):
-    inv = c.execute(
-        "SELECT COALESCE(SUM(qty),0) u, COALESCE(SUM(qty*avg_cost),0) cost, COALESCE(SUM(qty*market_price),0) mkt FROM inventory"
-    ).fetchone()
+    import tracker
+    d = tracker.dashboard(c)
     incoming = c.execute(
         "SELECT COALESCE(SUM(i.qty),0) FROM order_items i JOIN orders o ON o.id=i.order_id "
-        "WHERE o.status IN ('confirmed','shipped') AND o.received=0"
-    ).fetchone()[0]
+        "WHERE o.status IN ('confirmed','shipped') AND o.received=0").fetchone()[0]
     open_orders = c.execute("SELECT COUNT(*) FROM orders WHERE status IN ('confirmed','shipped')").fetchone()[0]
-    sales = c.execute("SELECT * FROM sales").fetchall()
-
-    def profit(s):
-        return s["sale_price"] * s["qty"] - (s["fees"] or 0) - (s["shipping"] or 0) - s["cost_basis"] * s["qty"]
-
-    cutoff = (datetime.now() - timedelta(days=30)).isoformat()
-    return {
-        "units_on_hand": inv["u"],
-        "inventory_cost": round(inv["cost"], 2),
-        "inventory_market": round(inv["mkt"], 2),
-        "incoming_units": incoming,
-        "open_orders": open_orders,
-        "revenue": round(sum(s["sale_price"] * s["qty"] for s in sales), 2),
-        "profit": round(sum(profit(s) for s in sales), 2),
-        "profit_30d": round(sum(profit(s) for s in sales if (s["sold_at"] or "") >= cutoff), 2),
-        "review_count": c.execute("SELECT COUNT(*) FROM review WHERE resolved=0").fetchone()[0],
-    }
+    cut = (datetime.now() - timedelta(days=30)).date().isoformat()
+    p30 = sum(s["profit"] or 0 for s in tracker.list_sales(c) if (s["sale_date"] or "") >= cut)
+    return {"units_on_hand": d["in_stock"], "inventory_cost": d["cost_on_hand"], "inventory_market": d["market_value"],
+            "incoming_units": incoming, "open_orders": open_orders, "revenue": d["revenue"], "profit": d["net_profit"],
+            "profit_30d": round(p30, 2), "review_count": c.execute("SELECT COUNT(*) FROM review WHERE resolved=0").fetchone()[0]}
 
 
 def limits_report(c):

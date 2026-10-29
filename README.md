@@ -31,3 +31,12 @@ read-only GitHub token on that tab.
 ## Email
 Settings > "Load my folders" lets you pick a dedicated folder (e.g. Pokemon Center). Every email in a folder other
 than INBOX is read. The **Inbox** tab shows your mail read-only, with what the scraper makes of each email.
+
+## Reselling tracker (v8+)
+The app now includes the full Pokémon / Graphics Card reselling tracker: Dashboard, Inventory, Sales (automatic platform fees, profit, ROI), Receipts, Scan Station, Tax Summary, settings for fees, currencies and alerts, and CSV import/export. Delivered orders found by the email scraper are added to Inventory automatically (weighted-average cost).
+
+## Updates
+Every push to `main` builds a new installer and publishes it as a GitHub release. The app checks on start, downloads automatically (Settings → "Download app updates automatically"), and shows an "Install & restart" bar. If the repository is private, paste a read-only GitHub token under Updates (or make the repo public).
+
+## Tests
+`python selftest.py` runs the backend checks (the build runs it before packaging). `python gen_embedded.py` rebuilds the embedded UI after editing `static/index.html`.

@@ -17,8 +17,10 @@ jobs:
         shell: pwsh
         run: |
           "BUILD = ${{ github.run_number }}`nREPO = `"${{ github.repository }}`"" | Set-Content -Encoding utf8 build_info.py
-      - name: Smoke-test the server code
-        run: python -c "import server, vdata, jig, mail_sync, parsers, static_embedded; print('imports ok')"
+      - name: Rebuild embedded UI and run the self-test
+        run: |
+          python gen_embedded.py
+          python selftest.py
       - name: Build app
         run: python -m PyInstaller --noconfirm --windowed --onedir --name ValorInventoryAgent --icon app.ico --collect-all webview app.py
       - name: Check the build produced the exe

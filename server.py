@@ -11,6 +11,7 @@ import re
 import subprocess
 import core
 import mail_sync
+import tracker
 import parsers
 import updater
 import static_embedded
@@ -97,15 +98,30 @@ class H(BaseHTTPRequestHandler):
         try:
             if u.path == "/api/summary":
                 return self.send(core.summary(c))
-            if u.path == "/api/inventory":
-                return self.send(rows(c, "SELECT * FROM inventory ORDER BY name"))
             if u.path == "/api/orders":
                 orders = rows(c, "SELECT * FROM orders ORDER BY COALESCE(order_date,'') DESC, id DESC")
                 for o in orders:
                     o["items"] = rows(c, "SELECT * FROM order_items WHERE order_id=?", (o["id"],))
                 return self.send(orders)
-            if u.path == "/api/sales":
-                return self.send(rows(c, "SELECT * FROM sales ORDER BY sold_at DESC"))
+            if u.path == "/api/items":
+                return self.send(tracker.list_items(c))
+            if u.path == "/api/tsales":
+                return self.send(tracker.list_sales(c))
+            if u.path == "/api/receipts":
+                return self.send(tracker.list_receipts(c))
+            if u.path == "/api/dashboard":
+                return self.send(tracker.dashboard(c))
+            if u.path == "/api/sku":
+                return self.send({"item": tracker.sku_lookup(c, parse_qs(u.query).get("sku", [""])[0])})
+            if u.path == "/api/tax":
+                y = parse_qs(u.query).get("year", [""])[0]
+                return self.send(tracker.tax_summary(c, int(y) if y.isdigit() else tracker.date.today().year))
+            if u.path == "/api/tsettings":
+                return self.send({"settings": tracker.get_settings(c), "fees": tracker.list_fees(c), "currencies": tracker.list_currencies(c)})
+            if u.path == "/api/lists":
+                return self.send(tracker.lists(c))
+            if u.path == "/api/scans":
+                return self.send(tracker.list_scans(c))
             if u.path == "/api/review":
                 return self.send(rows(c, "SELECT * FROM review WHERE resolved=0 ORDER BY id DESC"))
             if u.path == "/api/vaccounts":
@@ -162,29 +178,45 @@ class H(BaseHTTPRequestHandler):
                 mail_sync.save_conf(b.get("email", old["email"]), b.get("password") or old["password"],
                                     b.get("folder", "INBOX") or "INBOX", int(b["days"]) if str(b.get("days", "")).strip().isdigit() else 30)
                 return self.send({"ok": True})
-            if u.path == "/api/inventory":
-                core.add_to_inventory(c, b.get("sku", ""), b["name"], int(b.get("qty", 0)), float(b.get("avg_cost", 0)))
-                if b.get("market_price"):
-                    c.execute("UPDATE inventory SET market_price=? WHERE lower(name)=lower(?)",
-                              (float(b["market_price"]), b["name"]))
-                c.commit()
+            if u.path == "/api/items/save":
+                return self.send({"ok": True, "id": tracker.save_item(c, b, b.get("id"))})
+            if u.path == "/api/items/delete":
+                tracker.delete_item(c, b["id"])
                 return self.send({"ok": True})
-            if u.path == "/api/inventory/update":
-                c.execute(
-                    "UPDATE inventory SET name=?, sku=?, qty=?, avg_cost=?, market_price=?, location=?, notes=?, updated_at=? WHERE id=?",
-                    (b["name"], b.get("sku", ""), int(b["qty"]), float(b["avg_cost"] or 0),
-                     float(b.get("market_price") or 0), b.get("location", ""), b.get("notes", ""), core.now(), b["id"]))
-                c.commit()
+            if u.path == "/api/tsales/save":
+                return self.send({"ok": True, **tracker.save_sale(c, b, b.get("id"))})
+            if u.path == "/api/tsales/delete":
+                tracker.delete_sale(c, b["id"])
                 return self.send({"ok": True})
-            if u.path == "/api/inventory/delete":
-                c.execute("DELETE FROM inventory WHERE id=?", (b["id"],))
-                c.commit()
+            if u.path == "/api/receipts/save":
+                tracker.save_receipt(c, b, b.get("id"))
                 return self.send({"ok": True})
-            if u.path == "/api/sale":
-                core.record_sale(c, b["inventory_id"], int(b["qty"]), float(b["sale_price"]),
-                                 float(b.get("fees") or 0), float(b.get("shipping") or 0), b.get("platform", ""))
-                c.commit()
+            if u.path == "/api/receipts/delete":
+                tracker.delete_receipt(c, b["id"])
                 return self.send({"ok": True})
+            if u.path == "/api/tsettings":
+                return self.send({"ok": True, "settings": tracker.set_settings(c, b)})
+            if u.path == "/api/fees/save":
+                tracker.save_fee(c, b, b.get("old"))
+                return self.send({"ok": True})
+            if u.path == "/api/fees/delete":
+                tracker.delete_fee(c, b["platform"])
+                return self.send({"ok": True})
+            if u.path == "/api/currencies/save":
+                tracker.save_currency(c, b)
+                return self.send({"ok": True})
+            if u.path == "/api/currencies/delete":
+                tracker.delete_currency(c, b["code"])
+                return self.send({"ok": True})
+            if u.path == "/api/scan":
+                return self.send({"ok": True, **tracker.scan(c, b.get("mode"), b.get("sku"), b.get("sold_by", ""))})
+            if u.path == "/api/export":
+                text = tracker.export_csv(c, b["name"])
+                fn = f"{b['name']}_{tracker.today()}.csv"
+                return self.send({"ok": True, "csv": text, "filename": fn, "saved_to": save_export(fn, text)})
+            if u.path == "/api/import":
+                added, errors = tracker.import_csv(c, b["name"], b.get("csv", ""))
+                return self.send({"ok": True, "added": added, "errors": errors[:20], "error_count": len(errors)})
             if u.path == "/api/orders":
                 o = core.apply_event(c, {
                     "retailer": b["retailer"], "order_number": b["order_number"].upper(),
@@ -296,6 +328,13 @@ class H(BaseHTTPRequestHandler):
                     return self.send({"error": "No accounts match that selection"}, 400)
                 text = json.dumps(out, indent=2)
                 return self.send({"ok": True, "json": text, "count": len(out["accounts"]), "saved_to": save_export(b.get("filename"), text)})
+            if u.path == "/api/open_url":
+                url = str(b.get("url", ""))
+                if url.startswith(("https://", "http://")):
+                    import webbrowser
+                    webbrowser.open(url)
+                    return self.send({"ok": True})
+                return self.send({"error": "Only web links can be opened"}, 400)
             if u.path == "/api/open_exports":
                 d = exports_dir()
                 try:
