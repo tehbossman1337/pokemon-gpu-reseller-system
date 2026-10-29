@@ -12,6 +12,8 @@ import re
 import subprocess
 import core
 import mail_sync
+import notify
+import packages
 import tracker
 import parsers
 import updater
@@ -54,6 +56,15 @@ def run_sync(rescan=False):
     SYNC.update(running=True, log=[], stats=None, error=None)
     try:
         SYNC["stats"] = mail_sync.sync(progress=lambda m: SYNC["log"].append(m), rescan=rescan)
+        try:
+            c = core.connect()
+            if SYNC["stats"].get("review"):
+                notify.notify(c, "review", "Emails need review", f"{SYNC['stats']['review']} email(s) couldn't be read automatically - open the Review tab.",
+                              dedupe=f"review:{core.now()[:13]}", link="review")
+            c.close()
+            packages.run_refresh()  # follow new packages right away (needs a 17TRACK key)
+        except Exception as e:
+            SYNC["log"].append(f"!! after-sync step failed: {e}")
     except Exception as e:  # surfaced in the UI
         SYNC["error"] = str(e)
     finally:
@@ -150,6 +161,13 @@ class H(BaseHTTPRequestHandler):
                 return self.send({"settings": tracker.get_settings(c), "fees": tracker.list_fees(c), "currencies": tracker.list_currencies(c)})
             if u.path == "/api/lists":
                 return self.send(tracker.lists(c))
+            if u.path == "/api/packages":
+                return self.send({"items": packages.list_packages(c), "state": packages.STATE, "settings": {**packages.get_settings(c), "track_key": "set" if packages.get_settings(c)["track_key"] else ""}})
+            if u.path == "/api/notifications":
+                return self.send(notify.list_notifications(c))
+            if u.path == "/api/notify_config":
+                cfg = notify.get_config(c)
+                return self.send({"config": cfg, "kinds": notify.KINDS, "windows": os.name == "nt"})
             if u.path == "/api/scans":
                 return self.send(tracker.list_scans(c))
             if u.path == "/api/review":
@@ -209,6 +227,37 @@ class H(BaseHTTPRequestHandler):
                                     b.get("folder", "*") or "*", int(b["days"]) if str(b.get("days", "")).strip().isdigit() else 0,
                                     bool(b.get("everything")))
                 return self.send({"ok": True})
+            if u.path == "/api/packages/save":
+                return self.send({"ok": True, "id": packages.save_package(c, b, b.get("id"))})
+            if u.path == "/api/packages/status":
+                packages.set_status_manual(c, int(b["id"]), b["status"])
+                return self.send({"ok": True})
+            if u.path == "/api/packages/delete":
+                packages.delete_package(c, int(b["id"]))
+                return self.send({"ok": True})
+            if u.path == "/api/packages/refresh":
+                if not packages.get_settings(c)["track_key"]:
+                    return self.send({"ok": False, "error": "Add your 17TRACK key in Settings → Package tracking to enable live tracking."})
+                threading.Thread(target=packages.run_refresh, kwargs={"only_ids": [int(b["id"])] if b.get("id") else None}, daemon=True).start()
+                return self.send({"ok": True})
+            if u.path == "/api/pkgsettings":
+                if "track_key" in b and not b["track_key"] and not b.get("clear_key"):
+                    b = {k: v for k, v in b.items() if k != "track_key"}  # left blank = keep the saved key
+                packages.set_settings(c, b)
+                return self.send({"ok": True})
+            if u.path == "/api/notifications/read":
+                notify.mark_read(c, b.get("ids"))
+                return self.send({"ok": True})
+            if u.path == "/api/notifications/clear":
+                notify.clear(c)
+                return self.send({"ok": True})
+            if u.path == "/api/notify_config":
+                return self.send({"ok": True, "config": notify.set_config(c, b)})
+            if u.path == "/api/notify_test":
+                cfg = notify.get_config(c)
+                res = notify.send_push(cfg, "Valor Inventory Agent", "Test notification - it works!", force=True)
+                notify.notify(c, "test", "Test notification", "If you can read this, in-app notifications work.", dedupe=None, push=False)
+                return self.send({"ok": True, "results": res})
             if u.path == "/api/items/save":
                 return self.send({"ok": True, "id": tracker.save_item(c, b, b.get("id"))})
             if u.path == "/api/items/delete":
@@ -428,7 +477,13 @@ def make_server(port=8765):
     raise RuntimeError("No free port found")
 
 
+def start_background():
+    """Things that keep running while the app is open (package re-checks)."""
+    packages.start_poller()
+
+
 if __name__ == "__main__":
+    start_background()
     srv, port = make_server(int(os.environ.get("PORT", 8765)))
     print(f"Valor Inventory Agent running at http://localhost:{port}")
     srv.serve_forever()

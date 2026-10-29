@@ -61,6 +61,9 @@ def _dec(v):
 
 def _html_to_text(html):
     html = re.sub(r"(?is)<(script|style).*?</\1>", " ", html)
+    # keep the address of tracking links (the number is often only in the link)
+    html = re.sub(r'(?is)<a\s[^>]*?href=["\']([^"\']*(?:ups\.com|fedex\.com|usps\.com|dhl\.com|ontrac|lasership|track)[^"\']*)["\'][^>]*>(.*?)</a>',
+                  lambda mo: f"{mo.group(2)} ( {mo.group(1)} ) ", html)
     html = re.sub(r"(?i)<br\s*/?>|</(p|div|tr|li|h\d)>", "\n", html)
     html = re.sub(r"(?i)</t[dh]>", "  ", html)
     html = re.sub(r"<[^>]+>", " ", html)
@@ -103,7 +106,12 @@ def process_message(c, message_id, sender, subject, body, date_header, extra="",
     extra = extra or f"{subject}\n{head}"
     retailer = parsers.detect_retailer(sender, extra, default)
     if not retailer:
-        return "skipped (not a retailer)", None
+        try:
+            import packages
+            r = packages.process_carrier_email(c, sender, subject, bodies, date_header)
+        except Exception as e:
+            r = (f"skipped (carrier email error: {e})", None)
+        return r if r else ("skipped (not a retailer)", None)
     ev, why, body = None, "", bodies[0]
     for cand in bodies:  # prefer a version that yields items; else any that parses
         e2, w2 = parsers.parse_email(sender, subject, cand, date_header, extra, default)
@@ -189,7 +197,7 @@ def _uids(M, crit):
     return set(data[0].split()) if typ == "OK" and data and data[0] else set()
 
 
-ORDER_WORDS = re.compile(r"order|ship|deliver|cancel|receipt|confirm|tracking|pick ?up|purchase|package|parcel|refund|invoice|payment|thank(s| you)|pre-?order", re.I)
+ORDER_WORDS = re.compile(r"order|ship|deliver|cancel|receipt|confirm|tracking|pick ?up|purchase|package|parcel|refund|invoice|payment|thank(s| you)|pre-?order|arriv|on (its|the) way|out for|expected|delay|exception|informed delivery|scheduled|label", re.I)
 RELAYS = ("privaterelay.appleid.com", "icloud.com", "me.com", "mac.com")
 
 
@@ -219,6 +227,12 @@ def _looks_like_order(msg, mine, whole):
         return False
     if parsers.detect_retailer(sender, hints):
         return True
+    try:
+        import packages
+        if packages.carrier_of_sender(sender):
+            return True
+    except Exception:
+        pass
     s = sender.lower()
     return bool(mine and mine in s) or any(r in s for r in RELAYS)  # forwards / Hide-My-Email
 

@@ -172,6 +172,7 @@ def mail_test():
     FOLDERS = {
         "INBOX": {b"1": mk("promo@shop.com", "Big sale", "buy now", "<i1>"),
                   b"2": mk("Me <me@icloud.com>", "Fwd: your order", "From: Target <orders@target.com>\nOrder #912345678901\n1 x Booster Bundle $26.94\nOrder total: $26.94", "<i2>"),
+                  b"5": mk("UPS <pkginfo@ups.com>", "UPS Update: Package Delivered", "Your package was delivered.\nTracking Number: 1Z999AA10123456784", "<i5>"),
                   b"4": mk(PC, "The Game Boy Jukebox Has Returned!", "Shop now and save on merch", "<i4>"),
                   b"3": mk("Orders <no-reply@pokemon.com>", "Your Pokemon Center order has shipped", "Order Number: 77001122 tracking number 1Z999AA10123456784", "<i3>")},
         "Archive": {b"1": mk(PC, "Thank you for your order!", "view in browser", "<a1>",
@@ -227,6 +228,10 @@ def mail_test():
         check("pokemon center order read (archive)", ("Pokemon Center", "77001122") in orders, orders)
         check("status moved forward to shipped", orders.get(("Pokemon Center", "77001122")) == "shipped", orders)
         check("forwarded target order", ("Target", "912345678901") in orders, orders)
+        import packages as _pk
+        pkgs = {p["tracking"]: p for p in _pk.list_packages(c)}
+        check("tracking number scraped from shipped email", "1Z999AA10123456784" in pkgs and pkgs["1Z999AA10123456784"]["order_number"] == "77001122", pkgs)
+        check("carrier email delivered it", pkgs.get("1Z999AA10123456784", {}).get("status") == "delivered", pkgs)
         check("drafts skipped", ("Pokemon Center", "99999999") not in orders)
         it = c.execute("select qty from order_items oi join orders o on o.id=oi.order_id where o.order_number='77001122'").fetchone()
         check("items parsed from separate-line layout", it and it[0] == 2, it)
@@ -245,6 +250,140 @@ def mail_test():
         core.connect = orig
     finally:
         imaplib.IMAP4_SSL = real
+
+
+# ------------------------------------------------------------------ packages + notifications
+def package_test():
+    import http.server
+    import packages
+    import notify
+    import parsers as P
+    dbp = os.path.join(os.environ["VALOR_DATA"], "pkg.db")
+    c = core.connect(dbp)
+    # --- finding tracking numbers
+    ex = packages.extract("Your order shipped.\nTracking number: 1Z999AA10123456784\nOrder #912345678901")
+    check("ups found", [x["tracking"] for x in ex] == ["1Z999AA10123456784"] and ex[0]["carrier"] == "UPS", ex)
+    ex = packages.extract("Track: https://www.fedex.com/fedextrack/?trknbr=123456789012 thanks")
+    check("fedex from link", ex and ex[0]["tracking"] == "123456789012" and ex[0]["carrier"] == "FedEx", ex)
+    ex = packages.extract("USPS tracking 9400111899223197428490 and also 9261290100130358400004")
+    check("usps two numbers", len(ex) == 2 and ex[0]["carrier"] == "USPS", ex)
+    check("order number is not tracking", packages.extract("Order Number: 20481234\nOrder #912345678901 total $5.00") == [])
+    check("year/dates not tracking", packages.extract("Tracking updated 2026102812345") == [])
+    check("status words", packages.classify("Your package was delivered") == "delivered" and packages.classify("will be delivered Friday") != "delivered"
+          and packages.classify("Out for delivery today") == "out_for_delivery" and packages.classify("Delivery attempted - action required") == "exception")
+    # --- retailer emails -> packages (+ notifications)
+    today = core.now()[:10]
+    ev, why = P.parse_email("Pokemon Center <pokemoncenter@email.pokemoncenter.com>", "Your Pokemon Center order has shipped",
+                            "Order Number: 55501234\n2 x Elite Trainer Box - $99.98\nTracking number: 1Z999AA10123456784\nOrder Total: $99.98")
+    check("parse has packages", ev and ev["packages"] and ev["packages"][0]["tracking"] == "1Z999AA10123456784", (ev, why))
+    out, oid, _ = core.apply_event(c, ev); c.commit()
+    pk = packages.list_packages(c)
+    check("package created+linked", len(pk) == 1 and pk[0]["order_id"] == oid and pk[0]["status"] == "shipped" and pk[0]["retailer"] == "Pokemon Center"
+          and "Elite Trainer" in pk[0]["description"] and pk[0]["carrier"] == "UPS", pk)
+    check("track url", pk[0]["url"].startswith("https://www.ups.com/track?tracknum=1Z999"))
+    nn = notify.list_notifications(c)
+    check("shipped notification", any(n["kind"] == "pkg_shipped" for n in nn["items"]) and nn["unread"] >= 1, nn["items"])
+    core.apply_event(c, ev); c.commit()
+    check("no duplicate package/notification", len(packages.list_packages(c)) == 1 and sum(1 for n in notify.list_notifications(c)["items"] if n["kind"] == "pkg_shipped") == 1)
+    # carrier email: out for delivery, then delivered
+    r = packages.process_carrier_email(c, "UPS <pkginfo@ups.com>", "UPS Update: Package Out For Delivery", ["Tracking Number: 1Z999AA10123456784"], None); c.commit()
+    check("carrier email out for delivery", packages.list_packages(c)[0]["status"] == "out_for_delivery", r)
+    check("out notification", any(n["kind"] == "pkg_out" for n in notify.list_notifications(c)["items"]))
+    ev2, _ = P.parse_email("Pokemon Center <pokemoncenter@email.pokemoncenter.com>", "Your order has been delivered", "Order #55501234 has been delivered")
+    core.apply_event(c, ev2); c.commit()
+    pkg = packages.list_packages(c)[0]
+    check("delivered via store email", pkg["status"] == "delivered" and pkg["delivered_at"] and not pkg["active"], pkg["status"])
+    check("delivered notification", any(n["kind"] == "pkg_delivered" for n in notify.list_notifications(c)["items"]))
+    packages.process_carrier_email(c, "UPS <x@ups.com>", "UPS: in transit", ["Tracking Number: 1Z999AA10123456784"], None); c.commit()
+    check("delivered is final", packages.list_packages(c)[0]["status"] == "delivered")
+    # old emails found while reading history stay quiet
+    n0 = len(notify.list_notifications(c)["items"])
+    packages.set_or_create(c, "1Z999AA10123450001", "UPS", "delivered", "old", "2026-01-01T10:00:00", quiet=False)
+    check("history is silent", len(notify.list_notifications(c)["items"]) == n0 and len(packages.list_packages(c)) == 2)
+    # manual add / edit / status / delete
+    pid = packages.save_package(c, {"tracking": "9400 1118 9922 3197 4284 90", "retailer": "Walmart", "description": "Booster box"})
+    check("manual add", [p for p in packages.list_packages(c) if p["id"] == pid][0]["carrier"] == "USPS")
+    check("dup rejected", raises(lambda: packages.save_package(c, {"tracking": "9400111899223197428490"}), "already"))
+    check("short rejected", raises(lambda: packages.save_package(c, {"tracking": "abc"}), "tracking"))
+    packages.set_status_manual(c, pid, "delivered"); check("manual status", [p for p in packages.list_packages(c) if p["id"] == pid][0]["status"] == "delivered")
+    packages.delete_package(c, pid); check("delete", all(p["id"] != pid for p in packages.list_packages(c)))
+    # --- notification settings + channels
+    check("cfg defaults", notify.get_config(c)["desktop"] is True and notify.get_config(c)["events"]["pkg_delivered"])
+    check("cfg bad webhook", raises(lambda: notify.set_config(c, {"discord": "http://x"}), "https"))
+    check("cfg bad quiet", raises(lambda: notify.set_config(c, {"quiet_start": "25:99"}), "22:00"))
+    cfg = notify.set_config(c, {"quiet_start": "22:00", "quiet_end": "07:00", "events": {"pkg_out": False}})
+    check("cfg saved", cfg["quiet_start"] == "22:00" and cfg["events"]["pkg_out"] is False and cfg["events"]["pkg_delivered"] is True)
+    from datetime import datetime as D
+    check("quiet hours wrap", notify._in_quiet(cfg, D(2026, 1, 1, 23, 30)) and notify._in_quiet(cfg, D(2026, 1, 1, 3, 0)) and not notify._in_quiet(cfg, D(2026, 1, 1, 12, 0)))
+    check("disabled event not logged", notify.notify(c, "pkg_out", "x", "y", dedupe="z1") is None)
+    check("dedupe", notify.notify(c, "test", "t", "b", dedupe="same", push=False) and notify.notify(c, "test", "t", "b", dedupe="same", push=False) is None)
+    ts = notify.toast_script("It's <b>", "Tom & Jerry")
+    check("toast script escaped", "&lt;b&gt;" in ts and "Tom &amp; Jerry" in ts and "It''s" in ts)
+    got = []
+
+    class W(http.server.BaseHTTPRequestHandler):
+        def log_message(s, *a): pass
+        def do_POST(s):
+            got.append((s.path, s.headers.get("Title"), s.rfile.read(int(s.headers.get("Content-Length") or 0)).decode()))
+            s.send_response(200); s.end_headers(); s.wfile.write(b"ok")
+    ws = http.server.ThreadingHTTPServer(("127.0.0.1", 0), W); threading.Thread(target=ws.serve_forever, daemon=True).start()
+    base = f"http://127.0.0.1:{ws.server_address[1]}"
+    res = notify.send_push({"desktop": False, "discord": base + "/discord", "slack": base + "/slack", "ntfy": "mytopic", "ntfy_server": base}, "Title here", "Body here")
+    check("push channels", res == {"discord": "ok", "slack": "ok", "ntfy": "ok"} and len(got) == 3, (res, got))
+    check("push payloads", any(p == "/discord" and "Body here" in b for p, _, b in got) and any(p == "/mytopic" and t == "Title here" for p, t, _ in got), got)
+    res = notify.send_push({"desktop": False, "discord": "http://127.0.0.1:9/nope"}, "t", "b")
+    check("push failure reported not raised", res["discord"] != "ok")
+    res = notify.send_push({"desktop": False, "discord": base + "/d", "quiet_start": "00:00", "quiet_end": "23:59"}, "t", "b")
+    check("quiet hours hold pushes", res["discord"].startswith("skipped"))
+    ws.shutdown()
+    # --- live tracking through a stand-in for the 17TRACK API
+    class T(http.server.BaseHTTPRequestHandler):
+        def log_message(s, *a): pass
+        def do_POST(s):
+            body = json.loads(s.rfile.read(int(s.headers.get("Content-Length") or 0)) or b"[]")
+            if s.headers.get("17token") != "goodkey":
+                s.send_response(401); s.end_headers(); return
+            nums = [x["number"] for x in body]
+            if s.path.endswith("/register"):
+                resp = {"code": 0, "data": {"accepted": [{"number": n} for n in nums if not n.endswith("BAD")],
+                                            "rejected": [{"number": n, "error": {"code": -18019903, "message": "carrier cannot be detected"}} for n in nums if n.endswith("BAD")]}}
+            else:
+                st = {"1": "InTransit", "2": "Delivered", "3": "OutForDelivery", "4": "Exception", "5": "NotFound"}
+                acc = []
+                for n in nums:
+                    acc.append({"number": n, "track_info": {"latest_status": {"status": st.get(n[-1], "InTransit")},
+                                "latest_event": {"time_iso": "2026-10-29T10:00:00-04:00", "description": "Departed facility", "location": "Louisville, KY"},
+                                "time_metrics": {"estimated_delivery_date": {"from": "2026-10-31T00:00:00-04:00"}},
+                                "tracking": {"providers": [{"events": [{"time_iso": "2026-10-29T10:00:00-04:00", "description": "Departed facility", "location": "Louisville, KY"}]}]}}})
+                resp = {"code": 0, "data": {"accepted": acc, "rejected": []}}
+            out = json.dumps(resp).encode()
+            s.send_response(200); s.send_header("Content-Length", str(len(out))); s.end_headers(); s.wfile.write(out)
+    ts_ = http.server.ThreadingHTTPServer(("127.0.0.1", 0), T); threading.Thread(target=ts_.serve_forever, daemon=True).start()
+    os.environ["TRACK_API_BASE"] = f"http://127.0.0.1:{ts_.server_address[1]}"
+    for n in ("1Z0000000000000011", "1Z0000000000000012", "1Z0000000000000013", "1Z0000000000000014", "1Z0000000000000015", "1Z000000000000BAD"):
+        packages.set_or_create(c, n, "UPS", "shipped", "x", core.now(), quiet=True)
+    check("refresh needs key", packages.refresh(c)["ok"] is False)
+    packages.set_settings(c, {"track_key": "wrong"})
+    check("refresh bad key message", raises_rt(lambda: packages.refresh(c), "did not accept"))
+    packages.set_settings(c, {"track_key": "goodkey", "interval": 15})
+    r = packages.refresh(c)
+    by = {p["tracking"][-1]: p for p in packages.list_packages(c) if p["tracking"].startswith("1Z0000000")}
+    check("refresh ok", r["ok"] and r["checked"] >= 5, r)
+    check("live statuses", by["1"]["status"] == "in_transit" and by["2"]["status"] == "delivered" and by["3"]["status"] == "out_for_delivery" and by["4"]["status"] == "exception" and by["5"]["status"] == "shipped", {k: v["status"] for k, v in by.items()})
+    check("live details", by["1"]["location"] == "Louisville, KY" and by["1"]["eta"] == "2026-10-31" and by["1"]["events"], by["1"])
+    check("rejected number flagged", [p for p in packages.list_packages(c) if p["tracking"].endswith("BAD")][0]["error"])
+    check("live notifications", any(n["kind"] == "pkg_delivered" and "1Z0000000000000012" in n["body"] for n in notify.list_notifications(c)["items"]))
+    check("settings", packages.get_settings(c)["interval"] == 15 and packages.set_settings(c, {"interval": 5})["interval"] == 10)
+    os.environ.pop("TRACK_API_BASE"); ts_.shutdown()
+    c.close()
+
+
+def raises_rt(fn, text):
+    try:
+        fn()
+    except RuntimeError as e:
+        return text.lower() in str(e).lower()
+    return False
 
 
 def api_smoke():
@@ -291,6 +430,7 @@ def api_smoke():
 if __name__ == "__main__":
     run()
     mail_test()
+    package_test()
     api_smoke()
     if FAILS:
         print(f"\n{len(FAILS)} FAILED")

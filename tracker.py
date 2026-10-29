@@ -401,9 +401,11 @@ def save_sale(c, d, sale_id=None):
     thr = get_settings(c)["big_sale"]
     if not old and thr and vals[5] >= thr:
         alert = f"Big sale: ${vals[5]:,.2f} for {it['name']} ({sku}) on {vals[3] or 'unknown platform'}"
-        hook = get_settings(c)["slack_webhook"]
-        if hook.startswith("https://"):
-            _post_slack(hook, alert)
+        try:
+            import notify
+            notify.notify(c, "big_sale", "Big sale", alert, dedupe=f"sale:{sid}")
+        except Exception:
+            pass
     return {"id": sid, "alert": alert}
 
 
@@ -510,6 +512,13 @@ def dashboard(c):
             rep.setdefault(b, []).append(x)
     reps = [v for v in rep.values() if len(v) > 1]
     out["repeat_buyers"] = {"count": len(reps), "revenue": r2(sum(x["sale_price"] for v in reps for x in v))}
+    try:
+        pk = c.execute("SELECT status, COUNT(*) n FROM packages GROUP BY status").fetchall()
+        cnt = {r["status"]: r["n"] for r in pk}
+        out["packages"] = {"active": sum(n for s, n in cnt.items() if s != "delivered"), "out_for_delivery": cnt.get("out_for_delivery", 0),
+                           "exception": cnt.get("exception", 0), "delivered": cnt.get("delivered", 0)}
+    except Exception:
+        out["packages"] = {"active": 0, "out_for_delivery": 0, "exception": 0, "delivered": 0}
     out["recent_sales"] = [{"sale_id": x["sale_id"], "item": x["item_name"], "date": x["sale_date"], "price": x["sale_price"], "profit": x["profit"]} for x in sales[:6]]
     return out
 

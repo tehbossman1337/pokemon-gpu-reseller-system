@@ -69,6 +69,18 @@ CREATE TABLE IF NOT EXISTS sales(
   platform TEXT DEFAULT '',
   sold_at TEXT
 );
+CREATE TABLE IF NOT EXISTS packages(
+  id INTEGER PRIMARY KEY, tracking TEXT NOT NULL UNIQUE, carrier TEXT DEFAULT '', retailer TEXT DEFAULT '',
+  order_id INTEGER, order_number TEXT DEFAULT '', description TEXT DEFAULT '',
+  status TEXT DEFAULT 'shipped', detail TEXT DEFAULT '', location TEXT DEFAULT '', eta TEXT DEFAULT '',
+  shipped_at TEXT DEFAULT '', delivered_at TEXT DEFAULT '', last_checked TEXT DEFAULT '', last_change TEXT DEFAULT '',
+  events TEXT DEFAULT '[]', source TEXT DEFAULT 'email', registered INTEGER DEFAULT 0, error TEXT DEFAULT '',
+  notes TEXT DEFAULT '', created_at TEXT
+);
+CREATE TABLE IF NOT EXISTS notifications(
+  id INTEGER PRIMARY KEY, ts TEXT, kind TEXT, title TEXT, body TEXT, link TEXT DEFAULT '',
+  read INTEGER DEFAULT 0, dedupe TEXT UNIQUE
+);
 CREATE TABLE IF NOT EXISTS processed_emails(
   message_id TEXT PRIMARY KEY,
   subject TEXT,
@@ -247,6 +259,12 @@ def apply_event(c, ev, auto_receive=True):
                 (oid, it.get("sku", ""), it["name"], it.get("qty", 1), it.get("price", 0)),
             )
         has_items = len(ev["items"])
+
+    try:  # follow tracking numbers / notify; must never break the scraper
+        import packages
+        packages.on_order_event(c, ev, oid)
+    except Exception:
+        pass
 
     cur_status = c.execute("SELECT status, received FROM orders WHERE id=?", (oid,)).fetchone()
     if auto_receive and cur_status["status"] == "delivered" and not cur_status["received"] and has_items:

@@ -54,13 +54,44 @@ body.priv-on .sens.show,body.priv-on input.sens:focus{filter:none!important;user
 .addr{line-height:1.35;min-width:170px}.addr small{color:var(--mute)}
 .privbar{display:flex;gap:6px 14px;flex-wrap:wrap;align-items:center;padding:8px 12px;margin-bottom:10px;border:1px solid var(--line);border-radius:10px;background:var(--card)}
 .privbar.on{border-color:var(--blue)}
+
+/* valor pages */
+.vlayout{display:grid;grid-template-columns:190px 1fr;gap:16px;align-items:start}
+.rail{position:sticky;top:0;display:flex;flex-direction:column;gap:2px;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:6px}
+.rail button{display:flex;justify-content:space-between;gap:8px;align-items:center;background:none;border:0;color:var(--ink);padding:7px 10px;border-radius:7px;cursor:pointer;font:inherit;text-align:left}
+.rail button:hover{background:var(--soft)}.rail button.on{background:var(--acc);color:#fff}.rail button span{font-size:12px;opacity:.7}
+.vmain{min-width:0}
+.pgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:12px}
+.pcard{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:9px}
+.pcard.sel{border-color:var(--blue);box-shadow:0 0 0 1px var(--blue)}
+.pc-top{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.pc-name{flex:1;min-width:80px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pc-sec small{display:block;font-size:10px;letter-spacing:.08em;color:var(--mute);margin-bottom:1px}
+.pc-foot{display:flex;gap:6px;margin-top:auto;padding-top:4px}
+.cc{border-radius:10px;padding:11px 13px;color:#fff;font-family:ui-monospace,Consolas,monospace;min-height:88px;background:linear-gradient(135deg,#374151,#6b7280)}
+.cc-visa{background:linear-gradient(135deg,#1a3c8f,#3b6fe0)}.cc-mastercard{background:linear-gradient(135deg,#1f1f1f,#c2410c)}
+.cc-amex{background:linear-gradient(135deg,#0f766e,#2dd4bf)}.cc-discover{background:linear-gradient(135deg,#b45309,#f59e0b)}
+.cc-brand{font-size:11px;letter-spacing:.12em;opacity:.85}.cc-num{font-size:15px;letter-spacing:.06em;margin:8px 0 6px}.cc-row{display:flex;justify-content:space-between;font-size:11px;opacity:.9}
+.selbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:7px 12px;margin-bottom:10px;border:1px dashed var(--line);border-radius:10px;color:var(--mute)}
+.selbar.on{border:1px solid var(--blue);color:var(--ink);background:rgba(29,78,216,.06)}
+.avatar{display:inline-flex;width:24px;height:24px;border-radius:50%;background:var(--acc);color:#fff;align-items:center;justify-content:center;font-size:12px;font-weight:600;margin-right:8px;vertical-align:middle}
+.steps{display:flex;gap:3px;margin-bottom:4px}.steps i{width:26px;height:6px;border-radius:3px;background:var(--line)}.steps i.on{background:var(--ok)}.steps i.bad{background:var(--acc)}
+.chips{display:flex;gap:6px;flex-wrap:wrap}.chips button{border-radius:16px;padding:4px 12px}.chips button.on{background:var(--ink);color:var(--card);border-color:var(--ink)}
+#ntpanel{display:none;position:fixed;top:56px;right:20px;width:390px;max-width:calc(100vw - 24px);max-height:72vh;overflow:auto;background:var(--card);border:1px solid var(--line);border-radius:12px;box-shadow:0 12px 32px rgba(0,0,0,.3);z-index:50}
+#ntpanel.on{display:block}.nt-head{display:flex;gap:6px;align-items:center;padding:10px 12px;border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--card)}
+.nt-item{display:flex;gap:10px;padding:10px 12px;border-bottom:1px solid var(--line);cursor:pointer}.nt-item:hover{background:var(--soft)}.nt-item.unread{background:rgba(29,78,216,.07)}
+.nt-dot{width:9px;height:9px;border-radius:50%;margin-top:6px;flex:none;background:var(--mute)}.nt-dot.pkg_delivered{background:var(--ok)}.nt-dot.pkg_exception,.nt-dot.order_cancelled{background:var(--acc)}.nt-dot.pkg_out{background:var(--warn)}.nt-dot.pkg_shipped{background:var(--blue)}
+.nt-b{white-space:pre-wrap;font-size:12px;color:var(--mute)}
+.evgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:2px 14px}
+.timeline{margin:6px 0 2px;padding-left:14px;border-left:2px solid var(--line);font-size:12px}.timeline div{margin:5px 0}
+@media(max-width:900px){.vlayout{grid-template-columns:1fr}.rail{flex-direction:row;overflow:auto;position:static}.rail button{white-space:nowrap}}
 @media(max-width:900px){#app{grid-template-columns:1fr}aside{display:flex;flex-wrap:wrap;gap:4px;padding:8px}aside h6{display:none}aside button{width:auto}.mainwrap{height:auto}.grid2{grid-template-columns:1fr}.ibgrid{grid-template-columns:1fr!important}}
 </style></head><body>
 <div id="app"><aside><div class="logo">Valor <span>Inventory</span> Agent</div><div id="nav"></div></aside>
 <div class="mainwrap"><div id="banner"></div>
 <header><h1 id="title"></h1><span id="syncmsg" class="muted"></span>
-<button class="b p" id="syncbtn">Sync iCloud email</button><button class="b" id="rescanbtn" title="Re-read every email in the look-back window">Re-scan all</button><button class="b" id="privbtn" onclick="PRIV.on=!PRIV.on;savePriv();render()" title="Blur addresses, cards, emails and passwords on screen">Blur: off</button><button class="b" onclick="api('open_exports',{})">Exports folder</button></header>
+<button class="b p" id="syncbtn">Sync iCloud email</button><button class="b" id="rescanbtn" title="Re-read every email in the look-back window">Re-scan all</button><button class="b" id="ntbtn" onclick="ntToggle(event)">Alerts</button><button class="b" id="privbtn" onclick="PRIV.on=!PRIV.on;savePriv();render()" title="Blur addresses, cards, emails and passwords on screen">Blur: off</button><button class="b" onclick="api('open_exports',{})">Exports folder</button></header>
 <main><div id="view"></div></main></div></div>
+<div id="ntpanel"></div>
 <dialog id="dlg"><form method="dialog" id="form"></form></dialog>
 <div id="toast" popover="manual"></div>
 <script>
@@ -75,30 +106,30 @@ function toast(msg,bad){const t=$('#toast');t.textContent=msg;t.className=bad?'b
   try{t.showPopover()}catch(e){t.style.display='block'}clearTimeout(toast.t);toast.t=setTimeout(()=>{try{t.hidePopover()}catch(e){}t.style.display=''},bad?6000:3500)}
 const NAV=[['Overview',[['dashboard','Dashboard']]],
  ['Business',[['inventory','Inventory'],['sales','Sales'],['receipts','Receipts'],['scan','Scan Station'],['tax','Tax Summary']]],
- ['Orders',[['orders','Orders'],['inbox','Inbox'],['limits','Purchase Limits'],['review','Review']]],
+ ['Orders',[['orders','Orders'],['packages','Packages'],['inbox','Inbox'],['limits','Purchase Limits'],['review','Review']]],
  ['Valor AIO',[['accounts','Accounts'],['profiles','Profiles']]],
  ['App',[['settings','Settings'],['updates','Updates'],['reference','Visual Reference']]]];
-const TITLES={dashboard:'Dashboard',inventory:'Inventory',sales:'Sales',receipts:'Receipts',scan:'Scan Station',tax:'Tax Summary',orders:'Orders',inbox:'Inbox',limits:'Purchase Limits',review:'Review queue',accounts:'Valor Accounts',profiles:'Valor Profiles',settings:'Settings',updates:'Updates',reference:'Visual Reference'};
+const TITLES={packages:'Package tracker',dashboard:'Dashboard',inventory:'Inventory',sales:'Sales',receipts:'Receipts',scan:'Scan Station',tax:'Tax Summary',orders:'Orders',inbox:'Inbox',limits:'Purchase Limits',review:'Review queue',accounts:'Valor Accounts',profiles:'Valor Profiles',settings:'Settings',updates:'Updates',reference:'Visual Reference'};
 const SITES=['Pokemon Center','Target','Walmart','Best Buy','GameStop','Costco',"Sam's Club"];
 let tab='dashboard',data={},filter='',openSites={},L={},TS={settings:{},fees:[],currencies:[]},DASH={},TAX=null,SCANS=[],SC={mode:'receive',sold_by:'',msg:'',bad:false};
-let IF={status:'',category:''};
+let IF={status:'',category:''},NC=null;
 
 async function load(){
   const g=p=>api(p);
-  const [inv,sal,rec,dash,ord,rev,acc,prof,lim,lists,ts,scans]=await Promise.all(['items','tsales','receipts','dashboard','orders','review','vaccounts','vprofiles','limits','lists','tsettings','scans'].map(g));
+  const [inv,sal,rec,dash,ord,rev,acc,prof,lim,lists,ts,scans,pkg,ncfg]=await Promise.all(['items','tsales','receipts','dashboard','orders','review','vaccounts','vprofiles','limits','lists','tsettings','scans','packages','notify_config'].map(g));
   data={inv:inv.error?[]:inv,sal:sal.error?[]:sal,rec:rec.error?[]:rec,ord:ord.error?[]:ord,rev:rev.error?[]:rev,acc:acc.error?[]:acc,prof:prof.error?[]:prof,lim:lim.error?[]:lim};
-  DASH=dash;L=lists;TS=ts;SCANS=scans.error?[]:scans;
+  data.pkg=pkg.error?{items:[],settings:{},state:{}}:pkg;NC=ncfg.error?null:ncfg;DASH=dash;L=lists;TS=ts;SCANS=scans.error?[]:scans;
   [inv,sal,dash,lists].forEach(r=>{if(r&&r.error)toast(r.error,true)});
   render();
 }
 function nav(){
-  $('#nav').innerHTML=NAV.map(([g,ts])=>`<h6>${g}</h6>`+ts.map(([k,l])=>`<button class="${k==tab?'on':''}" onclick="go('${k}')">${l}${k=='review'&&data.rev&&data.rev.length?`<span class="badge">${data.rev.length}</span>`:''}${k=='updates'&&UPD.info&&UPD.info.ok&&UPD.info.update?'<span class="badge">new</span>':''}</button>`).join('')).join('');
+  $('#nav').innerHTML=NAV.map(([g,ts])=>`<h6>${g}</h6>`+ts.map(([k,l])=>`<button class="${k==tab?'on':''}" onclick="go('${k}')">${l}${k=='packages'&&data.pkg&&data.pkg.items&&data.pkg.items.filter(p=>p.active).length?`<span class="badge">${data.pkg.items.filter(p=>p.active).length}</span>`:''}${k=='review'&&data.rev&&data.rev.length?`<span class="badge">${data.rev.length}</span>`:''}${k=='updates'&&UPD.info&&UPD.info.ok&&UPD.info.update?'<span class="badge">new</span>':''}</button>`).join('')).join('');
   $('#title').textContent=TITLES[tab]||'';
 }
 function go(t){tab=t;filter='';if(t=='tax')TAX=null;render();$('main').scrollTop=0}
 function render(){
   nav();
-  const v={dashboard:vDash,inventory:vInv,sales:vSal,receipts:vRecs,scan:vScan,tax:vTax,orders:vOrd,inbox:vInbox,limits:vLim,review:vRev,accounts:vAcc,profiles:vProf,settings:vSet,updates:vUpd,reference:vRef}[tab];
+  const v={packages:vPkg,dashboard:vDash,inventory:vInv,sales:vSal,receipts:vRecs,scan:vScan,tax:vTax,orders:vOrd,inbox:vInbox,limits:vLim,review:vRev,accounts:vAcc,profiles:vProf,settings:vSet,updates:vUpd,reference:vRef}[tab];
   const keep=document.activeElement&&document.activeElement.id==='flt'?document.activeElement.selectionStart:null;
   $('#view').innerHTML=v();
   if(keep!==null){const e=$('#flt');if(e){e.focus();e.setSelectionRange(keep,keep)}}
@@ -127,7 +158,7 @@ function chart(months){
 function vDash(){
   const d=DASH;if(!d||d.error||!d.months)return '<div class="muted">Loading…</div>';
   const t=d.target;
-  return `<div class="tiles">${tile('In stock',d.in_stock+' units')}${tile('Cost on hand',money(d.cost_on_hand))}${tile('Market value',money(d.market_value))}${tile('Units sold',d.sold)}${tile('Revenue',money(d.revenue))}${tile('Fees',money(d.fees))}${tile('Expenses (receipts)',money(d.expenses))}${tile('Net profit',money(d.net_profit),sgn(d.net_profit))}${tile('ROI',d.roi==null?'—':pct(d.roi))}</div>
+  return `<div class="tiles">${tile('In stock',d.in_stock+' units')}${tile('Cost on hand',money(d.cost_on_hand))}${tile('Market value',money(d.market_value))}${tile('Units sold',d.sold)}${tile('Revenue',money(d.revenue))}${tile('Fees',money(d.fees))}${tile('Expenses (receipts)',money(d.expenses))}${tile('Net profit',money(d.net_profit),sgn(d.net_profit))}${tile('ROI',d.roi==null?'—':pct(d.roi))}${tile('Packages on the way',(d.packages||{}).active||0)}</div>
   ${d.aging_count?`<div class="panel" style="border-color:var(--warn);margin-bottom:12px"><b style="color:var(--warn)">${d.aging_count} item(s) have been in stock ${d.aging_days}+ days.</b> Consider lowering prices — see the list below.</div>`:''}
   <div class="panels"><div class="panel"><h3>Last 6 months</h3>${chart(d.months)}</div>
   <div class="panel"><h3>Monthly profit target</h3>${t.target?`<div class="big ${sgn(t.so_far)}">${money(t.so_far)} <span class="muted" style="font-size:15px">of ${money(t.target)}</span></div><div class="prog"><i style="width:${Math.min(100,Math.max(0,t.so_far/t.target*100))}%"></i></div><p class="muted">${t.remaining?`${money(t.remaining)} to go${t.more_sales?` — about ${t.more_sales} more sales at your ${money(t.avg_profit)} average profit`:''}.`:'Target reached this month 🎉'}</p>`:'<p class="muted">Set a monthly profit target in Settings to track it here.</p>'}
@@ -268,7 +299,7 @@ function vTax(){
 }
 
 /* ---------------------------------------------------------- settings */
-function vSet(){
+function vSetBase(){
   const s=TS.settings||{};
   const i=(n,l,v,t='text',x='')=>`<div><label>${l}</label><input id="st_${n}" type="${t}" value="${esc(v??'')}" ${x}></div>`;
   return `<div class="panels"><div class="panel"><h3>Business</h3><div class="grid2" id="stform">${i('partner1','Team member 1',s.partner1)}${i('partner2','Team member 2',s.partner2)}${i('aging_days','Aging alert after (days)',s.aging_days,'number','min=1')}${i('drop_pct','Suggested price drop (%)',Math.round((s.drop_pct||0)*1000)/10,'number','step=0.5 min=0 max=100')}${i('monthly_target','Monthly profit target ($)',s.monthly_target||'','number','step=1 min=0')}${i('big_sale','Big-sale alert at profit ($)',s.big_sale||'','number','step=1 min=0')}</div>
@@ -303,6 +334,106 @@ async function mailSettings(){
    <p class="muted">Use * to read every folder (Trash and Drafts are skipped). If a folder's name contains a store name (like Pokemon Center), every email in it counts as that store, even if forwarded.</p><label>Look back (days, 0 = all time)</label><input name="days" type="number" min="0" value="${esc(s.days)}">`,fd=>api('settings',fd));
   $('#loadfolders').onclick=async()=>{const st=$('#folderstatus');st.textContent='Loading…';const r=await api('mail/folders');
     if(!r.ok){st.textContent=r.error;return}st.textContent=r.folders.length+' folders found: '+r.folders.join(', ');$('#mailfolders').innerHTML=r.folders.map(f=>`<option value="${esc(f)}">`).join('')};
+}
+
+/* ---------------------------------------------------------- packages */
+let PK={filter:'active',open:{}};
+const PKSTEPS=['Shipped','In transit','Out for delivery','Delivered'];
+const stepIdx=s=>({label_created:0,shipped:0,in_transit:1,exception:1,pickup:2,out_for_delivery:2,delivered:3})[s]??0;
+function ago(ts){if(!ts)return '';const d=new Date(ts.length==10?ts+'T12:00:00':ts);if(isNaN(d))return ts;const m=Math.round((Date.now()-d)/60000);
+  if(m<1)return 'just now';if(m<60)return m+'m ago';if(m<1440)return Math.round(m/60)+'h ago';return Math.round(m/1440)+'d ago'}
+const pkPill=p=>`<span class="pill ${p.status=='delivered'?'delivered':p.status=='exception'?'cancelled':p.status=='out_for_delivery'||p.status=='pickup'?'shipped':'confirmed'}" style="${p.status=='exception'?'text-decoration:none;color:var(--acc)':''}">${esc(p.label)}</span>`;
+function vPkg(){
+  const P=data.pkg||{items:[],settings:{},state:{}},all=P.items||[],t=filter.toLowerCase();
+  const act=all.filter(p=>p.active),prob=all.filter(p=>p.status=='exception'),out=all.filter(p=>p.status=='out_for_delivery'||p.status=='pickup'),del=all.filter(p=>p.status=='delivered');
+  const rows=all.filter(p=>(PK.filter=='all'||(PK.filter=='active'&&p.active)||(PK.filter=='delivered'&&p.status=='delivered')||(PK.filter=='problems'&&p.status=='exception'))
+    &&(!t||(p.tracking+p.retailer+p.description+p.order_number+p.carrier).toLowerCase().includes(t)));
+  const chip=(k,l,n)=>`<button class="b ${PK.filter==k?'on':''}" onclick="PK.filter='${k}';render()">${l} <span class="muted" style="color:inherit;opacity:.7">${n}</span></button>`;
+  const hasKey=P.settings&&P.settings.track_key;
+  return `<div class="tiles">${tile('On the way',act.length)}${tile('Out for delivery',out.length)}${tile('Problems',prob.length,prob.length?'neg':'')}${tile('Delivered',del.length)}</div>
+  <div class="panel" style="margin-bottom:12px"><b>How it works:</b> when a store email says an order shipped, the tracking number is picked up automatically, linked to the order, and followed until it is delivered. Later emails (out for delivery, delivered, delays) update it${hasKey?', and the package is also checked live every '+P.settings.interval+' minutes':''}.
+  ${hasKey?'':'<br><span class="muted">Live tracking is off. Add a free 17TRACK key in Settings → Package tracking to check carriers continuously, even if no email arrives.</span> <button class="b" onclick="go(\'settings\')">Open settings</button>'}
+  ${P.state&&P.state.last_run?`<div class="muted" style="margin-top:4px">Last live check ${ago(P.state.last_run)}: ${esc(P.state.last_result)}</div>`:''}</div>
+  <div class="bar">${f()}<div class="chips">${chip('active','On the way',act.length)}${chip('problems','Problems',prob.length)}${chip('delivered','Delivered',del.length)}${chip('all','All',all.length)}</div>
+  <button class="b p" onclick="pkDlg()">+ Add tracking</button><button class="b" onclick="pkRefresh()">Check all now</button></div>
+  ${tbl('<th>Package</th><th>Carrier / tracking</th><th>Status</th><th>Last update</th><th>ETA</th><th></th>',rows.map(p=>`<tr style="cursor:pointer" onclick="PK.open[${p.id}]=!PK.open[${p.id}];render()"><td class="wrap"><b>${esc(p.retailer||'Package')}</b>${p.order_number?` <span class="muted">#${esc(p.order_number)}</span>`:''}<div class="muted" style="font-size:12px">${esc(p.description)||'&nbsp;'}</div></td>
+  <td>${esc(p.carrier||'Carrier?')}<div class="muted" style="font-size:12px">${esc(p.tracking)}</div></td>
+  <td><div class="steps">${[0,1,2,3].map(k=>`<i class="${k<=stepIdx(p.status)?(p.status=='exception'&&k==stepIdx(p.status)?'bad':'on'):''}"></i>`).join('')}</div>${pkPill(p)}</td>
+  <td class="wrap" style="min-width:170px">${esc(p.detail)||''}<div class="muted" style="font-size:12px">${esc(p.location)} ${ago(p.last_change)}</div></td><td>${esc(p.eta||'')}</td>
+  <td onclick="event.stopPropagation()"><button class="b" onclick="openUrl(${q(p.url)})">Track ↗</button> <button class="b" onclick="pkCopy(${q(p.tracking)})">Copy</button> <button class="b" onclick="pkDlg(${p.id})">Edit</button></td></tr>
+  ${PK.open[p.id]?`<tr><td colspan="6" class="wrap" style="background:var(--soft)"><div class="evgrid"><div><b>Shipped</b><br>${esc((p.shipped_at||'').replace('T',' ').slice(0,16))}</div><div><b>Source</b><br>${esc(p.source)}</div><div><b>Last checked</b><br>${p.last_checked?ago(p.last_checked):'never'}</div>${p.delivered_at?`<div><b>Delivered</b><br>${esc(p.delivered_at.replace('T',' ').slice(0,16))}</div>`:''}</div>
+  ${p.error?`<div class="neg" style="margin-top:4px">${esc(p.error)}</div>`:''}${p.notes?`<div style="margin-top:4px">Notes: ${esc(p.notes)}</div>`:''}
+  ${p.events&&p.events.length?`<div class="timeline">${p.events.map(e=>`<div><b>${esc(e.desc)}</b><br><span class="muted">${esc((e.time||'').replace('T',' ').slice(0,16))} ${esc(e.loc)}</span></div>`).join('')}</div>`:'<div class="muted" style="margin-top:4px">No scan history yet.</div>'}
+  <div class="bar" style="margin:8px 0 0"><button class="b" onclick="pkRefresh(${p.id})">Check this one now</button>${p.status!='delivered'?`<button class="b" onclick="pkStatus(${p.id},'delivered')">Mark delivered</button>`:`<button class="b" onclick="pkStatus(${p.id},'in_transit')">Not delivered</button>`}<button class="b" onclick="pkDel(${p.id})">Delete</button></div></td></tr>`:''}`).join(''),
+  all.length?'Nothing in this view.':'No packages yet. They appear automatically when a shipping email arrives — click “Sync iCloud email”, or add one by hand.')}`;
+}
+async function pkRefresh(id){const r=await api('packages/refresh',id?{id}:{});if(!r.ok)return toast(r.error||'Could not check',true);toast('Checking with the carrier…');setTimeout(load,4000)}
+async function pkStatus(id,s){const r=await api('packages/status',{id,status:s});if(r.error)return toast(r.error,true);load()}
+async function pkDel(id){if(confirm('Stop tracking this package?')){await api('packages/delete',{id});load()}}
+function pkCopy(t){try{navigator.clipboard.writeText(t).then(()=>toast('Copied '+t))}catch(e){toast(t)}}
+function pkDlg(id){
+  const r=(data.pkg.items||[]).find(x=>x.id==id)||{};
+  dlg(`<label>Tracking number</label><input name="tracking" value="${esc(r.tracking||'')}" required placeholder="1Z… / 9400… / 1234…">
+  <label>Carrier (blank = detect)</label><select name="carrier"><option value=""></option>${['UPS','USPS','FedEx','DHL','OnTrac','LaserShip','Amazon'].map(c=>`<option ${c==r.carrier?'selected':''}>${c}</option>`).join('')}</select>
+  <label>Store</label><input name="retailer" list="sites" value="${esc(r.retailer||'')}"><label>What's in it</label><input name="description" value="${esc(r.description||'')}"><label>Notes</label><input name="notes" value="${esc(r.notes||'')}">${siteList()}`
+  +(r.id?`<p><button type="button" class="b" onclick="pkDel(${r.id});$('#dlg').close()">Delete</button></p>`:''),fd=>api('packages/save',{...fd,id:r.id||null}));
+}
+
+/* ---------------------------------------------------------- notifications (bell) */
+let NT={items:[],unread:0,open:false,seen:null,errors:{}};
+async function ntLoad(){
+  const r=await api('notifications');if(r.error||!r.items)return;
+  const newest=r.items.length?r.items[0].id:0;
+  if(NT.seen!==null&&newest>NT.seen){const fresh=r.items.filter(i=>i.id>NT.seen&&!i.read).slice(0,3);fresh.forEach(i=>toast(i.title+(i.body?'\n'+i.body.split('\n')[0]:'')));if(fresh.length&&['packages','dashboard','orders'].includes(tab))load()}
+  NT.seen=Math.max(NT.seen||0,newest);NT.items=r.items;NT.unread=r.unread;NT.errors=r.errors||{};ntRender();
+}
+function ntRender(){
+  const b=$('#ntbtn');if(b)b.innerHTML='Alerts'+(NT.unread?` <span class="badge">${NT.unread}</span>`:'');
+  const p=$('#ntpanel');if(!p)return;p.classList.toggle('on',NT.open);if(!NT.open)return;
+  p.innerHTML=`<div class="nt-head"><b style="flex:1">Notifications</b><button class="b" onclick="ntReadAll()">Mark all read</button><button class="b" onclick="ntClear()">Clear</button><button class="b" onclick="NT.open=false;go('settings')">Settings</button></div>`+
+   (NT.items.length?NT.items.map(i=>`<div class="nt-item ${i.read?'':'unread'}" onclick="ntOpen(${i.id},${q(i.link||'')})"><span class="nt-dot ${esc(i.kind)}"></span><div><b>${esc(i.title)}</b><div class="nt-b">${esc(i.body)}</div><div class="muted" style="font-size:11px">${ago(i.ts)}</div></div></div>`).join(''):'<div class="muted" style="padding:16px">Nothing yet. You will be told here when a package ships, is out for delivery, is delivered or has a problem.</div>')+
+   (Object.keys(NT.errors).length?`<div class="neg" style="padding:8px 12px;font-size:12px">Couldn't send to: ${Object.entries(NT.errors).map(([k,v])=>esc(k)+' ('+esc(v)+')').join('; ')}</div>`:'');
+}
+function ntToggle(e){e.stopPropagation();NT.open=!NT.open;ntRender();if(NT.open)ntLoad()}
+document.addEventListener('click',e=>{if(NT.open&&!e.target.closest('#ntpanel')){NT.open=false;ntRender()}});
+async function ntReadAll(){await api('notifications/read',{});ntLoad()}
+async function ntClear(){await api('notifications/clear',{});ntLoad()}
+async function ntOpen(id,link){await api('notifications/read',{ids:[id]});NT.open=false;if(link)go(link);ntLoad()}
+
+/* ---------------------------------------------------------- settings: notifications + package tracking */
+function vSet(){return vSetBase()+setExtras()}
+function setExtras(){
+  const nc=(NC&&NC.config)||{events:{}},kinds=(NC&&NC.kinds)||{},P=(data.pkg&&data.pkg.settings)||{};
+  const i=(id,l,v,t='text',x='')=>`<div><label>${l}</label><input id="${id}" type="${t}" value="${esc(v??'')}" ${x}></div>`;
+  return `<div class="panels"><div class="panel"><h3>Notifications</h3>
+  <p class="muted" style="margin-top:0">Every alert appears under the Alerts button. You can also push them to other places:</p>
+  <label class="cbl"><input type="checkbox" id="nf_desktop" ${nc.desktop?'checked':''}> Windows desktop pop-ups ${NC&&NC.windows?'':'<span class="muted">(Windows only)</span>'}</label>
+  ${i('nf_discord','Discord webhook URL (Server settings → Integrations → Webhooks)',nc.discord,'text','placeholder="https://discord.com/api/webhooks/…"')}
+  ${i('nf_slack','Slack webhook URL',nc.slack,'text','placeholder="https://hooks.slack.com/services/…"')}
+  <div class="grid2">${i('nf_ntfy','ntfy topic (free phone push — install the ntfy app and subscribe)',nc.ntfy,'text','placeholder="my-valor-alerts"')}${i('nf_ntfy_server','ntfy server',nc.ntfy_server||'https://ntfy.sh')}</div>
+  <div class="grid2">${i('nf_qs','Quiet hours start (pushes only)',nc.quiet_start,'time')}${i('nf_qe','Quiet hours end',nc.quiet_end,'time')}</div>
+  <label style="display:block;margin-top:10px;color:var(--mute);font-size:12px">Tell me about</label><div>${Object.entries(kinds).filter(([k])=>k!='test').map(([k,l])=>`<label class="cbl"><input type="checkbox" id="nf_ev_${k}" ${(nc.events||{})[k]!==false?'checked':''}> ${esc(l)}</label>`).join('')}</div>
+  <div class="bar" style="margin-top:10px"><button class="b p" onclick="saveNotify()">Save</button><button class="b" onclick="testNotify()">Send a test</button></div></div>
+  <div class="panel"><h3>Package tracking</h3>
+  <p class="muted" style="margin-top:0">Tracking numbers are picked up from your emails automatically. For live carrier checks (works even if no email arrives), add a free key from 17TRACK.</p>
+  ${i('pk_key','17TRACK API key','','password',`placeholder="${P.track_key?'(saved — type to replace)':'paste your key'}" autocomplete="off"`)}
+  <div class="grid2">${i('pk_int','Check every (minutes)',P.interval||30,'number','min=10 max=1440')}<div><label>&nbsp;</label><label class="cbl"><input type="checkbox" id="pk_auto" ${P.auto!==false?'checked':''}> Check automatically</label></div></div>
+  <div class="bar" style="margin-top:8px"><button class="b p" onclick="savePk()">Save</button><button class="b" onclick="openUrl('https://api.17track.net/en')">Get a free key ↗</button>${P.track_key?`<button class="b" onclick="savePk(true)">Remove key</button>`:''}</div></div></div>`;
+}
+async function saveNotify(){
+  const ev={};Object.keys((NC&&NC.kinds)||{}).forEach(k=>{const e=document.getElementById('nf_ev_'+k);if(e)ev[k]=e.checked});
+  const g=id=>document.getElementById(id).value;
+  const r=await api('notify_config',{desktop:$('#nf_desktop').checked,discord:g('nf_discord'),slack:g('nf_slack'),ntfy:g('nf_ntfy'),ntfy_server:g('nf_ntfy_server'),quiet_start:g('nf_qs'),quiet_end:g('nf_qe'),events:ev});
+  if(r.error)return toast(r.error,true);toast('Notification settings saved');load();
+}
+async function testNotify(){
+  await saveNotify();const r=await api('notify_test',{});if(r.error)return toast(r.error,true);
+  const res=Object.entries(r.results||{});toast('Test sent'+(res.length?':\n'+res.map(([k,v])=>k+': '+v).join('\n'):' (check the Alerts button)'),res.some(([,v])=>v!='ok'&&!/^skipped/.test(v)));ntLoad();
+}
+async function savePk(clear){
+  const body={interval:$('#pk_int').value,auto:$('#pk_auto').checked};const k=$('#pk_key').value.trim();
+  if(clear)Object.assign(body,{track_key:'',clear_key:true});else if(k)body.track_key=k;
+  const r=await api('pkgsettings',body);if(r.error)return toast(r.error,true);toast(clear?'Key removed':'Package settings saved');load();
 }
 
 /* ---------------------------------------------------------- visual reference */
@@ -392,12 +523,46 @@ const addrBlock=(a,sameLabel)=>{
 };
 
 /* ------------------------------ accounts */
-function vAcc(){
-  const rows=data.acc.filter(r=>(r.site+r.rec.email+r.rec.proxy).toLowerCase().includes(filter.toLowerCase()));
-  return `${privBar()}<div class="bar">${f()}<button class="b p" onclick="accDlg()">+ Add account</button><button class="b" onclick="accImport()">Import Valor file</button><button class="b" onclick="accExport()">Export Valor file</button><span class="muted">${rows.length} accounts</span></div>
-  <div class="bar">${bulkBar('acc')}</div>
-  ${groupBySite(rows).map(([s,l])=>siteBlock(s,l.length,`<table><tr><th><input type="checkbox" onclick="selAll('acc',${q(l.map(a=>a.id+'||'+a.site))},this.checked)"></th><th>Email</th><th>Password</th><th>Proxy</th><th>Session</th><th>Valor-selected</th><th></th></tr>${l.map(a=>`<tr><td>${chk('acc',a.id+'||'+a.site)}</td><td>${sv('contact',esc(a.rec.email))}</td><td>${a.rec.password?sv('secret',`<span class="muted" style="cursor:pointer" onclick="if(!document.body.classList.contains('priv-on')){this.textContent=this.dataset.p}" data-p="${esc(a.rec.password)}">${PRIV.on&&PRIV.secret?esc(a.rec.password):'•••••• (click)'}</span>`):''}</td><td>${a.rec.proxy?sv('secret',esc(a.rec.proxy)):''}</td><td>${flag(a.rec.session)}</td><td>${flag(a.rec.selected)}</td><td><button class="b" onclick="accDlg(${q(a.site)},${q(a.id)})">Edit</button></td></tr>`).join('')}</table>`)).join('')||'<div class="card"><table><tr><td class="muted">No accounts yet. Use Import Valor file.</td></tr></table></div>'}${siteList()}`;
+let VP={site:'',view:'cards',sort:'name',page:0},VA={site:'',page:0};
+const brandOf=r=>{const t=(r.card&&r.card.type)||'';if(t)return t;const n=String((r.card&&r.card.number)||'').replace(/\D/g,'');return /^4/.test(n)?'visa':/^(5[1-5]|2[2-7])/.test(n)?'mastercard':/^3[47]/.test(n)?'amex':/^(6011|65)/.test(n)?'discover':''};
+function rail(kind,sites,cur){
+  const counts={};sites.forEach(x=>counts[x]=(counts[x]||0)+1);
+  return `<div class="rail"><button class="${!cur?'on':''}" onclick="railSet('${kind}','')">All sites<span>${sites.length}</span></button>${Object.keys(counts).sort().map(x=>`<button class="${cur==x?'on':''}" onclick="railSet('${kind}',${q(x)})">${esc(x)}<span>${counts[x]}</span></button>`).join('')}</div>`;
 }
+function railSet(kind,x){if(kind=='prof'){VP.site=x;VP.page=0}else{VA.site=x;VA.page=0}render()}
+function pager(total,page,size,fn){
+  if(total<=size)return '';const pages=Math.ceil(total/size);
+  return `<div class="bar" style="justify-content:center;margin-top:12px"><button class="b" ${page<=0?'disabled':''} onclick="${fn}(${page-1})">‹ Prev</button><span class="muted">${page*size+1}–${Math.min(total,(page+1)*size)} of ${total}</span><button class="b" ${page>=pages-1?'disabled':''} onclick="${fn}(${page+1})">Next ›</button></div>`;
+}
+function pgProf(n){VP.page=n;render();$('main').scrollTop=0}
+function pgAcc(n){VA.page=n;render();$('main').scrollTop=0}
+function selBar(kind){
+  const n=sel[kind].size,dis=n?'':'disabled';
+  return `<div class="selbar ${n?'on':''}"><span><b id="bulkn">${n}</b> selected${n?'':' — tick rows to act on several at once'}</span>
+  <button class="b" ${dis} onclick="bulkFlag('${kind}','selected',true)">Mark Valor-selected</button><button class="b" ${dis} onclick="bulkFlag('${kind}','selected',false)">Unmark</button>
+  <button class="b" ${dis} onclick="bulkDel('${kind}')">Delete</button><button class="b" ${dis} onclick="sel.${kind}.clear();render()">Clear</button></div>`;
+}
+function updBulk(){render()}
+const initial=e=>(String(e||'?').trim()[0]||'?').toUpperCase();
+
+function vAcc(){
+  const t=filter.toLowerCase();
+  const all=data.acc;
+  let rows=all.filter(r=>(!VA.site||r.site==VA.site)&&(!t||(r.site+r.rec.email+r.rec.proxy).toLowerCase().includes(t)));
+  const size=50;if(VA.page*size>=rows.length)VA.page=0;const total=rows.length;rows=rows.slice(VA.page*size,(VA.page+1)*size);
+  const inScope=all.filter(r=>!VA.site||r.site==VA.site);
+  return `${privBar()}<div class="vlayout">${rail('acc',all.map(a=>a.site),VA.site)}<div class="vmain">
+  <div class="tiles">${tile('Accounts',inScope.length)}${tile('With session',inScope.filter(a=>a.rec.session).length)}${tile('With proxy',inScope.filter(a=>a.rec.proxy).length)}${tile('Selected in Valor',inScope.filter(a=>a.rec.selected).length)}</div>
+  <div class="bar">${f()}<button class="b p" onclick="accDlg()">+ Add account</button><button class="b" onclick="accImport()">Import Valor file</button><button class="b" onclick="accExport()">Export Valor file</button><span class="muted">${total} shown</span></div>
+  ${selBar('acc')}
+  ${tbl(`<th><input type="checkbox" onclick="selAll('acc',${q(rows.map(a=>a.id+'||'+a.site))},this.checked)"></th><th>Account</th>${VA.site?'':'<th>Site</th>'}<th>Password</th><th>Proxy</th><th>Session</th><th>Valor</th><th></th>`,
+   rows.map(a=>`<tr><td>${chk('acc',a.id+'||'+a.site)}</td><td><span class="avatar">${esc(initial(a.rec.email))}</span>${sv('contact',esc(a.rec.email))}</td>${VA.site?'':`<td><span class="pill">${esc(a.site)}</span></td>`}
+   <td>${a.rec.password?sv('secret',`<span class="muted" style="cursor:pointer" onclick="if(!document.body.classList.contains('priv-on')){this.textContent=this.dataset.p}" data-p="${esc(a.rec.password)}">${PRIV.on&&PRIV.secret?esc(a.rec.password):'•••••• (click)'}</span>`):'<span class="muted">—</span>'}</td>
+   <td>${a.rec.proxy?sv('secret',esc(a.rec.proxy)):'<span class="muted">none</span>'}</td><td>${a.rec.session?'<span class="pill pos">session</span>':'<span class="muted">—</span>'}</td><td>${a.rec.selected?'<span class="pill pos">selected</span>':'<span class="muted">—</span>'}</td>
+   <td><button class="b" onclick="accDlg(${q(a.site)},${q(a.id)})">Edit</button></td></tr>`).join(''),all.length?'No accounts match.':'No accounts yet. Use “Import Valor file” to load your accounts.')}
+  ${pager(total,VA.page,size,'pgAcc')}</div></div>${siteList()}`;
+}
+
 function accDlg(site,id){
   const a=id?data.acc.find(x=>x.id==id&&x.site==site):null;const rec=a?a.rec:{id:'',email:'',password:'',proxy:'',session:false,selected:false};
   dlg(`<div><label>Website</label><input id="accsite" list="sites" value="${esc(a?a.site:'')}" required></div><div class="grid2">`+fld('email','Account email',rec,'text','required')+fld('password','Password',rec)+fld('proxy','Proxy (host:port:user:pass)',rec)+fld('id','ID (normally = email)',rec)+`</div>`+cb('session','Keep session',rec)+cb('selected','Selected in Valor',rec)+(a?`<p><button type="button" class="b" onclick="delAcc(${q(a.site)},${q(a.id)})">Delete account</button></p>`:''),
@@ -417,12 +582,41 @@ function saveText(name,text){const a=document.createElement('a');a.href=URL.crea
 
 /* ------------------------------ profiles */
 const mask=n=>n?'•••• '+String(n).replace(/\D/g,'').slice(-4):'';
+function profCard(p){
+  const r=p.rec,sh=r.shipping||{},bi=r.billing||{},b=brandOf(r),num=String(r.card.number||'').replace(/\D/g,'');
+  return `<div class="pcard ${sel.prof.has(p.id)?'sel':''}"><div class="pc-top">${chk('prof',p.id)}<b class="pc-name" title="${esc(r.name)}">${p.group_id?'↳ ':''}${esc(r.name)}</b>${r.selected?'<span class="pill pos">in Valor</span>':''}${VP.site?'':`<span class="pill">${esc(p.site)}</span>`}</div>
+  <div class="cc cc-${b||'none'}">${sv('card',`<div class="cc-brand">${esc((b||'card').toUpperCase())}</div><div class="cc-num">•••• •••• •••• ${esc(num.slice(-4)||'••••')}</div><div class="cc-row"><span>${esc(r.card.holder||'')}</span><span>${esc(r.card.expiration||'')}</span></div>`)}</div>
+  <div class="pc-sec"><small>SHIP TO</small><div>${sv('addr',esc((sh.firstName+' '+sh.lastName).trim()))}</div>${addrBlock(sh)}</div>
+  <div class="pc-sec"><small>BILL TO</small>${r.billingSameAsShipping?'<span class="pill">same as shipping</span>':`<div>${sv('addr',esc((bi.firstName+' '+bi.lastName).trim()))}</div>${addrBlock(bi)}`}</div>
+  <div class="pc-sec"><small>CONTACT</small>${sv('contact',esc(r.email))}${r.phoneNumber?` · ${sv('contact',esc(r.phoneNumber))}`:''}</div>
+  <div class="pc-foot"><button class="b" onclick="profDlg(${q(p.id)})">Edit</button>${p.group_id?'':`<button class="b" onclick="jigDlg(${q(p.id)})">Rejig</button>`}</div></div>`;
+}
+function profRow(p){
+  const r=p.rec,sh=r.shipping,bi=r.billing||{};
+  return `<tr><td>${chk('prof',p.id)}</td><td class="wrap" style="min-width:120px">${p.group_id?'<span class="muted">↳ </span>':''}<b>${esc(r.name)}</b>${VP.site?'':`<div><span class="pill">${esc(p.site)}</span></div>`}</td>
+  <td class="wrap"><div>${sv('addr',esc((sh.firstName+' '+sh.lastName).trim()))}</div>${addrBlock(sh)}</td>
+  <td class="wrap">${r.billingSameAsShipping?'<span class="pill">same as shipping</span>':`<div>${sv('addr',esc((bi.firstName+' '+bi.lastName).trim()))}</div>${addrBlock(bi)}`}</td>
+  <td class="wrap">${sv('contact',esc(r.email))}<br>${sv('contact',`<small class="muted">${esc(r.phoneNumber)}</small>`)}</td>
+  <td class="wrap">${sv('card',`${esc(brandOf(r)||'card')} ${mask(r.card.number)}<br><small class="muted">${esc(r.card.expiration||'')}</small>`)}</td><td>${flag(r.selected)}</td>
+  <td style="white-space:normal;min-width:130px"><button class="b" onclick="profDlg(${q(p.id)})">Edit</button>${p.group_id?'':` <button class="b" onclick="jigDlg(${q(p.id)})">Rejig</button>`}</td></tr>`;
+}
 function vProf(){
-  const t=filter.toLowerCase();
-  const rows=data.prof.filter(r=>!t||(r.site+r.rec.name+r.rec.email+r.rec.shipping.addressLine1+r.rec.shipping.addressLine2+r.rec.shipping.city+r.rec.shipping.zipCode+r.rec.shipping.firstName+r.rec.shipping.lastName).toLowerCase().includes(t));
-  return `${privBar()}<div class="bar">${f()}<button class="b p" onclick="profDlg()">+ Add profile</button><button class="b" onclick="profImport()">Import Valor file</button><button class="b" onclick="profExport()">Export Valor file</button><button class="b" onclick="massEditDlg()">Mass edit…</button><button class="b" onclick="massEditDlg('Billing')">Mass edit billing…</button><button class="b" onclick="bulkAddrDlg()">Change addresses…</button><span class="muted">${rows.length} profiles</span></div>
-  <div class="bar">${bulkBar('prof')}</div>
-  ${groupBySite(rows).map(([s,l])=>siteBlock(s,l.length,`<div style="overflow:auto"><table><tr><th><input type="checkbox" onclick="selAll('prof',${q(l.map(p=>p.id))},this.checked)"></th><th>Profile</th><th>Shipping address</th><th>Billing address</th><th>Contact</th><th>Card</th><th>Valor-sel.</th><th></th></tr>${l.map(p=>{const r=p.rec,sh=r.shipping,bi=r.billing||{};const same=r.billingSameAsShipping;return `<tr><td>${chk('prof',p.id)}</td><td class="wrap" style="min-width:120px">${p.group_id?'<span class="muted">↳ </span>':''}<b>${esc(r.name)}</b></td><td class="wrap"><div>${sv('addr',esc((sh.firstName+' '+sh.lastName).trim()))}</div>${addrBlock(sh)}</td><td class="wrap">${same?`<span class="pill">same as shipping</span>`:`<div>${sv('addr',esc((bi.firstName+' '+bi.lastName).trim()))}</div>${addrBlock(bi)}`}</td><td class="wrap">${sv('contact',esc(r.email))}<br>${sv('contact',`<small class="muted">${esc(r.phoneNumber)}</small>`)}</td><td class="wrap">${sv('card',`${esc(r.card.type||'card')} ${mask(r.card.number)}<br><small class="muted">${esc(r.card.expiration||'')}</small>`)}</td><td>${flag(r.selected)}</td><td style="white-space:normal;min-width:130px"><button class="b" onclick="profDlg(${q(p.id)})">Edit</button>${p.group_id?'':` <button class="b" onclick="jigDlg(${q(p.id)})">Rejig</button>`}</td></tr>`}).join('')}</table></div>`)).join('')||'<div class="card"><table><tr><td class="muted">No profiles yet. Use Import Valor file.</td></tr></table></div>'}${siteList()}`;
+  const t=filter.toLowerCase(),all=data.prof;
+  let rows=all.filter(p=>{const s=p.rec.shipping||{},b=p.rec.billing||{};return(!VP.site||p.site==VP.site)&&(!t||(p.site+p.rec.name+p.rec.email+s.addressLine1+s.addressLine2+s.city+s.state+s.zipCode+s.firstName+s.lastName+b.addressLine1+b.city).toLowerCase().includes(t))});
+  const key={name:p=>p.rec.name,city:p=>p.rec.shipping.city,state:p=>p.rec.shipping.state,zip:p=>p.rec.shipping.zipCode,site:p=>p.site}[VP.sort]||(p=>p.rec.name);
+  rows=rows.slice().sort((a,b)=>String(key(a)||'').localeCompare(String(key(b)||''),undefined,{numeric:true,sensitivity:'base'}));
+  const size=VP.view=='cards'?24:50;if(VP.page*size>=rows.length)VP.page=0;const total=rows.length;const pageRows=rows.slice(VP.page*size,(VP.page+1)*size);
+  const inScope=all.filter(p=>!VP.site||p.site==VP.site);
+  const tg=(v,l)=>`<button class="b ${VP.view==v?'p':''}" onclick="VP.view='${v}';VP.page=0;render()">${l}</button>`;
+  const body=!all.length?'<div class="panel">No profiles yet. Use “Import Valor file” to load your profiles file.</div>':!total?'<div class="panel muted">No profiles match.</div>':
+    VP.view=='cards'?`<div class="pgrid">${pageRows.map(profCard).join('')}</div>`:
+    tbl(`<th><input type="checkbox" onclick="selAll('prof',${q(pageRows.map(p=>p.id))},this.checked)"></th><th>Profile</th><th>Shipping address</th><th>Billing address</th><th>Contact</th><th>Card</th><th>Valor</th><th></th>`,pageRows.map(profRow).join(''),'');
+  return `${privBar()}<div class="vlayout">${rail('prof',all.map(p=>p.site),VP.site)}<div class="vmain">
+  <div class="tiles">${tile('Profiles',inScope.filter(p=>!p.group_id).length)}${tile('Rejigged copies',inScope.filter(p=>p.group_id).length)}${tile('Selected in Valor',inScope.filter(p=>p.rec.selected).length)}${tile('Billing differs',inScope.filter(p=>!p.rec.billingSameAsShipping).length)}</div>
+  <div class="bar">${f()}<select onchange="VP.sort=this.value;VP.page=0;render()" title="Sort">${[['name','Sort: name'],['city','Sort: city'],['state','Sort: state'],['zip','Sort: ZIP'],['site','Sort: site']].map(([v,l])=>`<option value="${v}" ${VP.sort==v?'selected':''}>${l}</option>`).join('')}</select>
+  <span style="display:inline-flex">${tg('cards','Cards')}${tg('table','Table')}</span><span class="muted">${total} shown</span></div>
+  <div class="bar"><button class="b p" onclick="profDlg()">+ Add profile</button><button class="b" onclick="profImport()">Import Valor file</button><button class="b" onclick="profExport()">Export Valor file</button><button class="b" onclick="massEditDlg()">Mass edit…</button><button class="b" onclick="massEditDlg('Billing')">Mass edit billing…</button><button class="b" onclick="bulkAddrDlg()">Change addresses…</button></div>
+  ${selBar('prof')}${body}${pager(total,VP.page,size,'pgProf')}</div></div>${siteList()}`;
 }
 const BLANK={name:'',email:'',phoneNumber:'',billingSameAsShipping:true,oneCheckout:false,quickTask:false,card:{holder:'',number:'',expiration:'',cvv:'',type:''},
   shipping:{firstName:'',lastName:'',addressLine1:'',addressLine2:'',city:'',countryName:'United States',countryCode:'US',state:'',zipCode:''},
@@ -630,5 +824,5 @@ async function poll(){
   if(s.running)timer=setTimeout(poll,1000);else if(!poll.first||s.stats){poll.first=1;load()}
 }
 applyPriv();
-load().then(()=>{poll();setTimeout(autoUpdate,1500)});
+load().then(()=>{poll();setTimeout(autoUpdate,1500);ntLoad();setInterval(ntLoad,15000)});
 </script></body></html>

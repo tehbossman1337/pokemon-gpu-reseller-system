@@ -46,3 +46,11 @@ By default the app reads **every folder, all time** (Trash and Drafts skipped) a
 
 ## Privacy blur
 Valor Accounts/Profiles show full shipping and billing addresses. Turn on **Blur** (header button or the bar above the tables) to blur addresses, card details, email/phone and passwords/proxies; click any value to reveal it. The choice is remembered.
+
+## Package tracker & notifications
+- **Packages** (Orders group): when a store email says an order shipped, the tracking number is read from it, linked to the order and followed until delivered. Carrier emails (UPS/USPS/FedEx/DHL/OnTrac/LaserShip/Amazon) and store "delivered" emails update it automatically; you can also add numbers by hand.
+- **Live tracking (optional):** paste a free 17TRACK key in Settings → Package tracking to poll carriers every N minutes, even when no email arrives.
+- **Alerts** (header button): in-app notification list with unread badge. Optional pushes to Windows desktop pop-ups, Discord, Slack or ntfy (phone), with quiet hours and per-event toggles. "Send a test" reports each channel's result.
+
+## Accounts & Profiles layout
+Site rail with counts, stats strip, search/sort, Cards or Table view with paging, credit-card visuals, ship-to/bill-to blocks, selection bar for bulk actions. The Blur option still covers addresses, cards, emails and passwords.

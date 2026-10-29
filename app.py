@@ -35,6 +35,7 @@ def fallback_window(url):
 
 def main():
     _log("starting")
+    server.start_background()
     srv, port = server.make_server(8765)
     threading.Thread(target=srv.serve_forever, daemon=True).start()
     url = f"http://127.0.0.1:{port}"

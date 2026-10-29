@@ -160,7 +160,14 @@ def parse_email(sender, subject, body, date_header=None, extra="", default=None)
     if not order_no:
         return None, "no order number found"
     total = _first([TOTAL], body)
-    tracking = _first(TRACKING, body) if status in ("shipped", "delivered") else ""
+    tracking, pk = "", []
+    if status in ("shipped", "delivered", "confirmed"):
+        try:
+            import packages
+            pk = packages.extract(f"{subject}\n{body}")
+        except Exception:
+            pk = []
+        tracking = pk[0]["tracking"] if pk else (_first(TRACKING, body) if status in ("shipped", "delivered") else "")
     try:
         d = parsedate_to_datetime(date_header).date().isoformat() if date_header else None
     except Exception:
@@ -172,5 +179,6 @@ def parse_email(sender, subject, body, date_header=None, extra="", default=None)
         "date": d or datetime.now().date().isoformat(),
         "total": float(total.replace(",", "")) if total else None,
         "tracking": tracking,
+        "packages": pk,
         "items": parse_items(body) if status in ("confirmed", "shipped", "delivered") else [],
     }, ""
