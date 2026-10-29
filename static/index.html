@@ -64,6 +64,43 @@ body.priv-on .sens.show,body.priv-on input.sens:focus{filter:none!important;user
 .kv{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px 16px}.kv small{display:block;font-size:11px;color:var(--mute);text-transform:uppercase;letter-spacing:.06em}
 .seg2{display:inline-flex}.seg2 button:first-child{border-radius:8px 0 0 8px}.seg2 button:last-child{border-radius:0 8px 8px 0;margin-left:-1px}
 .scanbig{font-size:22px!important;padding:16px!important}.qrbox{background:#fff;padding:6px;border-radius:8px;display:inline-block;line-height:0}.qrbox svg{width:190px;height:190px}
+
+/* valor-style dark pages */
+.vx{--vbg:#14171f;--vpan:#1d212b;--vrow:#262b37;--vline:#323847;--vink:#f1f3f8;--vmute:#9aa3b5;--vblue:#3b82f6;--vred:#e5484d;display:grid;grid-template-columns:260px 1fr;gap:14px;background:var(--vbg);color:var(--vink);border-radius:12px;padding:14px;min-height:70vh;align-items:start}
+.vx .gl{background:var(--vpan);border-radius:10px;padding:12px;position:sticky;top:0}
+.vx .gl h4{margin:0 0 2px;font-size:17px}.vx .gl small{color:var(--vmute)}
+.vx .gh{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+.vx .grp{display:flex;gap:8px;align-items:center;background:var(--vrow);border:1px solid transparent;border-radius:9px;padding:9px 10px;margin-top:8px;cursor:pointer;position:relative}
+.vx .grp:hover{border-color:var(--vline)}.vx .grp.on{border-color:var(--vblue);box-shadow:0 0 0 1px var(--vblue) inset}
+.vx .gico{width:30px;height:30px;border-radius:8px;background:linear-gradient(135deg,#2563eb,#60a5fa);display:flex;align-items:center;justify-content:center;font-weight:700;color:#fff;flex:none}
+.vx .gname{font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.vx .gmeta{display:flex;justify-content:space-between;gap:8px;font-size:11px;color:var(--vmute)}
+.vx .gbody{flex:1;min-width:0}.vx .gdel{background:none;border:0;color:var(--vred);cursor:pointer;font-size:14px}
+.vx .top{display:flex;align-items:center;gap:10px;background:var(--vpan);border-radius:10px;padding:10px 12px;flex-wrap:wrap}
+.vx .top .ttl{font-size:17px;font-weight:700}.vx .top .sub{color:var(--vmute);font-size:12px;display:block;font-weight:400}
+.vx .sp{flex:1}.vx .ib{width:32px;height:32px;border-radius:8px;border:0;background:var(--vrow);color:var(--vink);cursor:pointer;font-size:15px}
+.vx .ib:hover{background:var(--vline)}.vx .ib.red{color:var(--vred)}.vx .ib.blue{background:var(--vblue);color:#fff}
+.vx .vb{border:0;border-radius:8px;padding:8px 14px;background:var(--vrow);color:var(--vink);cursor:pointer;font:inherit;font-weight:600;font-size:13px}
+.vx .vb:hover{background:var(--vline)}.vx .vb.red{background:rgba(229,72,77,.18);color:#ff8a8e}.vx .vb.red:hover{background:rgba(229,72,77,.32)}.vx .vb:disabled{opacity:.4}
+.vx input[type=text],.vx input:not([type]),.vx select{background:var(--vrow);color:var(--vink);border:1px solid var(--vline);border-radius:8px;padding:7px 10px}
+.vx .tb{margin-top:10px;max-height:calc(100vh - 230px);overflow:auto;padding-right:4px}
+.vx .th,.vx .tr{display:grid;gap:10px;align-items:center;padding:0 12px}
+.vx .th{position:sticky;top:0;background:var(--vbg);z-index:2;padding:8px 12px;font-weight:700;font-size:12px;color:var(--vink);border-bottom:1px solid var(--vline)}
+.vx .tr{background:var(--vrow);border:1px solid transparent;border-radius:9px;margin-top:6px;min-height:50px;padding-top:7px;padding-bottom:7px}
+.vx .tr:hover{border-color:var(--vline)}.vx .tr.sel{border-color:var(--vblue);box-shadow:0 0 0 1px var(--vblue) inset}
+.vx .acc-g{grid-template-columns:28px minmax(180px,2.2fr) minmax(110px,1fr) 110px 150px}
+.vx .prof-g{grid-template-columns:28px minmax(150px,1.5fr) minmax(130px,1.2fr) minmax(170px,1.6fr) 70px 110px 130px}
+.vx .muted{color:var(--vmute)}.vx .cell2{font-size:12px;color:var(--vmute)}.vx .cell1{font-weight:600;overflow:hidden;text-overflow:ellipsis}
+.vx .saved{color:#4ade80;font-weight:600}.vx .none{color:var(--vmute)}.vx .acts{display:flex;gap:5px;justify-content:flex-end}
+.vx .acts .ib{width:28px;height:28px;font-size:13px;background:#323847}
+.vx .dot{width:11px;height:11px;border-radius:50%;display:inline-block;background:#4ade80}.vx .dot.no{background:transparent;border:2px solid var(--vmute)}
+.vx .brand{display:inline-flex;align-items:center;justify-content:center;width:42px;height:28px;border-radius:6px;background:#fff;margin-right:8px;font-size:10px;font-weight:800;vertical-align:middle;color:#1a3c8f;font-style:italic}
+.vx .brand.mc i{width:14px;height:14px;border-radius:50%;background:#eb001b;display:block}.vx .brand.mc i+i{background:#f79e1b;margin-left:-6px;opacity:.9}
+.vx .brand.amex{color:#fff;background:#2e77bc;font-style:normal}.vx .brand.disc{color:#fff;background:#f58220;font-style:normal}.vx .brand.none{color:#888}
+.vx .selbar2{margin-top:10px;padding:8px 12px;background:rgba(59,130,246,.15);border:1px solid var(--vblue);border-radius:9px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.vx .empty{padding:30px;text-align:center;color:var(--vmute)}.vx .a{color:#8ab4ff}
+.vx .pgr{display:flex;justify-content:center;gap:10px;align-items:center;margin-top:10px;color:var(--vmute)}
+.vx a{color:#8ab4ff}.vx .privbar{margin-bottom:0}
+@media(max-width:1000px){.vx{grid-template-columns:1fr}.vx .gl{position:static}.vx .acc-g,.vx .prof-g{min-width:760px}}
 /* valor pages */
 .vlayout{display:grid;grid-template-columns:190px 1fr;gap:16px;align-items:start}
 .rail{position:sticky;top:0;display:flex;flex-direction:column;gap:2px;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:6px}
@@ -602,49 +639,58 @@ const addrBlock=(a,sameLabel)=>{
 };
 
 /* ------------------------------ accounts */
-let VP={site:'',view:'cards',sort:'name',page:0},VA={site:'',page:0};
-const brandOf=r=>{const t=(r.card&&r.card.type)||'';if(t)return t;const n=String((r.card&&r.card.number)||'').replace(/\D/g,'');return /^4/.test(n)?'visa':/^(5[1-5]|2[2-7])/.test(n)?'mastercard':/^3[47]/.test(n)?'amex':/^(6011|65)/.test(n)?'discover':''};
-function rail(kind,sites,cur){
-  const counts={};sites.forEach(x=>counts[x]=(counts[x]||0)+1);
-  return `<div class="rail"><button class="${!cur?'on':''}" onclick="railSet('${kind}','')">All sites<span>${sites.length}</span></button>${Object.keys(counts).sort().map(x=>`<button class="${cur==x?'on':''}" onclick="railSet('${kind}',${q(x)})">${esc(x)}<span>${counts[x]}</span></button>`).join('')}</div>`;
-}
-function railSet(kind,x){if(kind=='prof'){VP.site=x;VP.page=0}else{VA.site=x;VA.page=0}render()}
-function pager(total,page,size,fn){
-  if(total<=size)return '';const pages=Math.ceil(total/size);
-  return `<div class="bar" style="justify-content:center;margin-top:12px"><button class="b" ${page<=0?'disabled':''} onclick="${fn}(${page-1})">‹ Prev</button><span class="muted">${page*size+1}–${Math.min(total,(page+1)*size)} of ${total}</span><button class="b" ${page>=pages-1?'disabled':''} onclick="${fn}(${page+1})">Next ›</button></div>`;
-}
+let VP={site:'',sort:'name',page:0,filt:false},VA={site:'',page:0,filt:false,show:false};
+const brandOf=r=>{const t=(r.card&&r.card.type)||'';const n=String((r.card&&r.card.number)||'').replace(/\D/g,'');const x=(t||(/^4/.test(n)?'visa':/^(5[1-5]|2[2-7])/.test(n)?'mastercard':/^3[47]/.test(n)?'amex':/^(6011|65)/.test(n)?'discover':'')).toLowerCase();return x};
+const brandBadge=b=>b=='mastercard'?'<span class="brand mc"><i></i><i></i></span>':b=='visa'?'<span class="brand">VISA</span>':b=='amex'?'<span class="brand amex">AMEX</span>':b=='discover'?'<span class="brand disc">DISC</span>':'<span class="brand none">CARD</span>';
 function pgProf(n){VP.page=n;render();$('main').scrollTop=0}
 function pgAcc(n){VA.page=n;render();$('main').scrollTop=0}
+function pgr(total,page,size,fn){if(total<=size)return '';const pages=Math.ceil(total/size);return `<div class="pgr"><button class="vb" ${page<=0?'disabled':''} onclick="${fn}(${page-1})">‹ Prev</button><span>${page*size+1}–${Math.min(total,(page+1)*size)} of ${total}</span><button class="vb" ${page>=pages-1?'disabled':''} onclick="${fn}(${page+1})">Next ›</button></div>`}
 function selBar(kind){
-  const n=sel[kind].size,dis=n?'':'disabled';
-  return `<div class="selbar ${n?'on':''}"><span><b id="bulkn">${n}</b> selected${n?'':' — tick rows to act on several at once'}</span>
-  <button class="b" ${dis} onclick="bulkFlag('${kind}','selected',true)">Mark Valor-selected</button><button class="b" ${dis} onclick="bulkFlag('${kind}','selected',false)">Unmark</button>
-  <button class="b" ${dis} onclick="bulkDel('${kind}')">Delete</button><button class="b" ${dis} onclick="sel.${kind}.clear();render()">Clear</button></div>`;
+  const n=sel[kind].size;if(!n)return '';
+  return `<div class="selbar2"><b>${n} selected</b><button class="vb" onclick="bulkFlag('${kind}','selected',true)">Mark Valor-selected</button><button class="vb" onclick="bulkFlag('${kind}','selected',false)">Unmark</button><button class="vb red" onclick="bulkDel('${kind}')">Delete</button><button class="vb" onclick="sel.${kind}.clear();render()">Clear</button></div>`;
 }
 function updBulk(){render()}
 const initial=e=>(String(e||'?').trim()[0]||'?').toUpperCase();
+function groupList(kind,all,cur,title){
+  const g={};all.forEach(x=>g[x.site]=(g[x.site]||0)+1);const names=Object.keys(g).sort();
+  const fn=kind=='acc'?'accGroup':'profGroup';
+  return `<div class="gl"><div class="gh"><div><h4>${title}</h4><small>${names.length} total</small></div><button class="ib blue" title="Import a Valor file" onclick="${kind=='acc'?'accImport':'profImport'}()">＋</button></div>
+  ${names.map(n=>`<div class="grp ${n==cur?'on':''}" onclick="${fn}(${q(n)})"><span class="gico">${esc(initial(n))}</span><div class="gbody"><div class="gname" title="${esc(n)}">${esc(n)}</div><div class="gmeta"><span>${g[n]} Total</span><span>${esc(n)}</span></div></div>
+   <button class="gdel" title="Delete this whole group" onclick="event.stopPropagation();${kind=='acc'?'delGroupAcc':'delGroupProf'}(${q(n)})">🗑</button></div>`).join('')||'<p class="muted">No groups yet. Use ＋ to import a Valor file.</p>'}</div>`;
+}
+function accGroup(n){VA.site=n;VA.page=0;render()}
+function profGroup(n){VP.site=n;VP.page=0;render()}
+async function delGroupAcc(site){const ids=data.acc.filter(a=>a.site==site).map(a=>a.id);if(!ids.length||!confirm(`Delete all ${ids.length} accounts in “${site}”? There is no undo.`))return;await api('vaccounts/delete',{site,ids});load()}
+async function delGroupProf(site){const ids=data.prof.filter(p=>p.site==site).map(p=>p.id);if(!ids.length||!confirm(`Delete all ${ids.length} profiles in “${site}”, including rejigged copies? There is no undo.`))return;await api('vprofiles/delete',{ids});load()}
+function copyText(t,label){try{navigator.clipboard.writeText(t).then(()=>toast('Copied '+(label||'')))}catch(e){toast('Copy not available here',true)}}
+function curSite(kind,all){const sites=[...new Set(all.map(x=>x.site))].sort();const k=kind=='acc'?VA:VP;if(!sites.includes(k.site))k.site=sites[0]||'';return k.site}
+function accCopy(site,id,field){const a=data.acc.find(x=>x.id==id&&x.site==site);if(a)copyText(a.rec[field]||'',field)}
+async function accClearSession(site,ids){await api('vaccounts/patch',{site,ids,changes:{session:false}});load()}
+async function accDelOne(site,id){if(confirm('Delete this account?')){await api('vaccounts/delete',{site,ids:[id]});load()}}
+function accCopyAll(site){const t=filter.toLowerCase();const rows=data.acc.filter(a=>a.site==site&&(!t||(a.rec.email+a.rec.proxy).toLowerCase().includes(t)));copyText(rows.map(a=>a.rec.email+':'+(a.rec.password||'')).join('\n'),rows.length+' accounts (email:password)')}
 
 function vAcc(){
-  const t=filter.toLowerCase();
-  const all=data.acc;
-  let rows=all.filter(r=>(!VA.site||r.site==VA.site)&&(!t||(r.site+r.rec.email+r.rec.proxy).toLowerCase().includes(t)));
-  const size=50;if(VA.page*size>=rows.length)VA.page=0;const total=rows.length;rows=rows.slice(VA.page*size,(VA.page+1)*size);
-  const inScope=all.filter(r=>!VA.site||r.site==VA.site);
-  return `${privBar()}<div class="vlayout">${rail('acc',all.map(a=>a.site),VA.site)}<div class="vmain">
-  <div class="tiles">${tile('Accounts',inScope.length)}${tile('With session',inScope.filter(a=>a.rec.session).length)}${tile('With proxy',inScope.filter(a=>a.rec.proxy).length)}${tile('Selected in Valor',inScope.filter(a=>a.rec.selected).length)}</div>
-  <div class="bar">${f()}<button class="b p" onclick="accDlg()">+ Add account</button><button class="b" onclick="accImport()">Import Valor file</button><button class="b" onclick="accExport()">Export Valor file</button><span class="muted">${total} shown</span></div>
-  ${selBar('acc')}
-  ${tbl(`<th><input type="checkbox" onclick="selAll('acc',${q(rows.map(a=>a.id+'||'+a.site))},this.checked)"></th><th>Account</th>${VA.site?'':'<th>Site</th>'}<th>Password</th><th>Proxy</th><th>Session</th><th>Valor</th><th></th>`,
-   rows.map(a=>`<tr><td>${chk('acc',a.id+'||'+a.site)}</td><td><span class="avatar">${esc(initial(a.rec.email))}</span>${sv('contact',esc(a.rec.email))}</td>${VA.site?'':`<td><span class="pill">${esc(a.site)}</span></td>`}
-   <td>${a.rec.password?sv('secret',`<span class="muted" style="cursor:pointer" onclick="if(!document.body.classList.contains('priv-on')){this.textContent=this.dataset.p}" data-p="${esc(a.rec.password)}">${PRIV.on&&PRIV.secret?esc(a.rec.password):'•••••• (click)'}</span>`):'<span class="muted">—</span>'}</td>
-   <td>${a.rec.proxy?sv('secret',esc(a.rec.proxy)):'<span class="muted">none</span>'}</td><td>${a.rec.session?'<span class="pill pos">session</span>':'<span class="muted">—</span>'}</td><td>${a.rec.selected?'<span class="pill pos">selected</span>':'<span class="muted">—</span>'}</td>
-   <td><button class="b" onclick="accDlg(${q(a.site)},${q(a.id)})">Edit</button></td></tr>`).join(''),all.length?'No accounts match.':'No accounts yet. Use “Import Valor file” to load your accounts.')}
-  ${pager(total,VA.page,size,'pgAcc')}</div></div>${siteList()}`;
+  const all=data.acc,site=curSite('acc',all),t=filter.toLowerCase();
+  const grp=all.filter(a=>a.site==site);
+  let rows=grp.filter(a=>!t||(a.rec.email+a.rec.proxy).toLowerCase().includes(t));
+  const size=100;if(VA.page*size>=rows.length)VA.page=0;const total=rows.length,page=rows.slice(VA.page*size,(VA.page+1)*size);
+  const ids=page.map(a=>a.id+'||'+a.site);
+  return `${privBar()}<div class="vx" style="margin-top:10px">${groupList('acc',all,site,'Account Groups')}<div>
+  <div class="top"><span class="gico">${esc(initial(site))}</span><div class="ttl">${esc(site)||'No group'}<span class="sub">${grp.length} Accounts${total!=grp.length?' · '+total+' shown':''}</span></div>
+   <button class="ib blue" title="Add account" onclick="accDlg(${q(site)})">＋</button><button class="ib" title="Import" onclick="accImport()">⤓</button><button class="ib" title="Export" onclick="accExport()">⤒</button><button class="ib" title="Search / filter" onclick="VA.filt=!VA.filt;render()">🔍</button>
+   <span class="sp"></span><button class="vb" onclick="accCopyAll(${q(site)})">Copy All</button><button class="vb red" onclick="if(confirm('Clear the saved session on every account in ${esc(site)}?'))accClearSession(${q(site)},${q(grp.map(a=>a.id))})">✕ Clear All Sessions</button><button class="vb red" onclick="delGroupAcc(${q(site)})">Delete All</button></div>
+  ${VA.filt||filter?`<div style="margin-top:10px">${f()}</div>`:''}${selBar('acc')}
+  <div class="tb"><div class="th acc-g"><input type="checkbox" ${ids.length&&ids.every(i=>sel.acc.has(i))?'checked':''} onclick="selAll('acc',${q(ids)},this.checked)"><span>Email</span><span>Password <a href="#" onclick="VA.show=!VA.show;render();return false" title="Show / hide passwords">${VA.show?'hide':'show'}</a></span><span>Session</span><span style="text-align:right">Actions</span></div>
+  ${page.map(a=>`<div class="tr acc-g ${sel.acc.has(a.id+'||'+a.site)?'sel':''}"><input type="checkbox" ${sel.acc.has(a.id+'||'+a.site)?'checked':''} onclick="togSel('acc',${q(a.id+'||'+a.site)},this.checked)">
+   <span class="cell1">${sv('contact',esc(a.rec.email))}${a.rec.selected?' <span class="saved" title="Selected in Valor">●</span>':''}${a.rec.proxy?`<div class="cell2">${sv('secret',esc(a.rec.proxy))}</div>`:''}</span>
+   <span>${a.rec.password?sv('secret',VA.show?esc(a.rec.password):'••••••••'):'<span class="none">—</span>'}</span>
+   <span>${a.rec.session?`<span class="saved">Saved</span> <button class="gdel" title="Clear session" onclick="accClearSession(${q(a.site)},${q([a.id])})">🗑</button>`:'<span class="none">None</span>'}</span>
+   <span class="acts"><button class="ib" title="Copy email" onclick="accCopy(${q(a.site)},${q(a.id)},'email')">⧉</button><button class="ib" title="Copy password" onclick="accCopy(${q(a.site)},${q(a.id)},'password')">🔑</button><button class="ib" title="Edit" onclick="accDlg(${q(a.site)},${q(a.id)})">✎</button><button class="ib red" title="Delete" onclick="accDelOne(${q(a.site)},${q(a.id)})">🗑</button></span></div>`).join('')||`<div class="empty">${all.length?'No accounts match.':'No accounts yet. Use ＋ to import your Valor accounts file.'}</div>`}
+  ${pgr(total,VA.page,size,'pgAcc')}</div></div></div>${siteList()}`;
 }
-
 function accDlg(site,id){
   const a=id?data.acc.find(x=>x.id==id&&x.site==site):null;const rec=a?a.rec:{id:'',email:'',password:'',proxy:'',session:false,selected:false};
-  dlg(`<div><label>Website</label><input id="accsite" list="sites" value="${esc(a?a.site:'')}" required></div><div class="grid2">`+fld('email','Account email',rec,'text','required')+fld('password','Password',rec)+fld('proxy','Proxy (host:port:user:pass)',rec)+fld('id','ID (normally = email)',rec)+`</div>`+cb('session','Keep session',rec)+cb('selected','Selected in Valor',rec)+(a?`<p><button type="button" class="b" onclick="delAcc(${q(a.site)},${q(a.id)})">Delete account</button></p>`:''),
+  dlg(`<div><label>Website</label><input id="accsite" list="sites" value="${esc(a?a.site:(site||''))}" required></div><div class="grid2">`+fld('email','Account email',rec,'text','required')+fld('password','Password',rec)+fld('proxy','Proxy (host:port:user:pass)',rec)+fld('id','ID (normally = email)',rec)+`</div>`+cb('session','Keep session',rec)+cb('selected','Selected in Valor',rec)+(a?`<p><button type="button" class="b" onclick="delAcc(${q(a.site)},${q(a.id)})">Delete account</button></p>`:''),
   async()=>{const r=readForm(rec);return api('vaccounts/save',{site:$('#accsite').value,rec:r,old_id:a?a.id:null,old_email:a?a.rec.email:null})});
 }
 async function delAcc(site,id){if(confirm('Delete this account?')){await api('vaccounts/delete',{site,ids:[id]});$('#dlg').close();load()}}
@@ -661,51 +707,42 @@ function saveText(name,text){const a=document.createElement('a');a.href=URL.crea
 
 /* ------------------------------ profiles */
 const mask=n=>n?'•••• '+String(n).replace(/\D/g,'').slice(-4):'';
-function profCard(p){
-  const r=p.rec,sh=r.shipping||{},bi=r.billing||{},b=brandOf(r),num=String(r.card.number||'').replace(/\D/g,'');
-  return `<div class="pcard ${sel.prof.has(p.id)?'sel':''}"><div class="pc-top">${chk('prof',p.id)}<b class="pc-name" title="${esc(r.name)}">${p.group_id?'↳ ':''}${esc(r.name)}</b>${r.selected?'<span class="pill pos">in Valor</span>':''}${VP.site?'':`<span class="pill">${esc(p.site)}</span>`}</div>
-  <div class="cc cc-${b||'none'}">${sv('card',`<div class="cc-brand">${esc((b||'card').toUpperCase())}</div><div class="cc-num">•••• •••• •••• ${esc(num.slice(-4)||'••••')}</div><div class="cc-row"><span>${esc(r.card.holder||'')}</span><span>${esc(r.card.expiration||'')}</span></div>`)}</div>
-  <div class="pc-sec"><small>SHIP TO</small><div>${sv('addr',esc((sh.firstName+' '+sh.lastName).trim()))}</div>${addrBlock(sh)}</div>
-  <div class="pc-sec"><small>BILL TO</small>${r.billingSameAsShipping?'<span class="pill">same as shipping</span>':`<div>${sv('addr',esc((bi.firstName+' '+bi.lastName).trim()))}</div>${addrBlock(bi)}`}</div>
-  <div class="pc-sec"><small>CONTACT</small>${sv('contact',esc(r.email))}${r.phoneNumber?` · ${sv('contact',esc(r.phoneNumber))}`:''}</div>
-  <div class="pc-foot"><button class="b" onclick="profDlg(${q(p.id)})">Edit</button>${p.group_id?'':`<button class="b" onclick="jigDlg(${q(p.id)})">Rejig</button>`}</div></div>`;
-}
-function profRow(p){
-  const r=p.rec,sh=r.shipping,bi=r.billing||{};
-  return `<tr><td>${chk('prof',p.id)}</td><td class="wrap" style="min-width:120px">${p.group_id?'<span class="muted">↳ </span>':''}<b>${esc(r.name)}</b>${VP.site?'':`<div><span class="pill">${esc(p.site)}</span></div>`}</td>
-  <td class="wrap"><div>${sv('addr',esc((sh.firstName+' '+sh.lastName).trim()))}</div>${addrBlock(sh)}</td>
-  <td class="wrap">${r.billingSameAsShipping?'<span class="pill">same as shipping</span>':`<div>${sv('addr',esc((bi.firstName+' '+bi.lastName).trim()))}</div>${addrBlock(bi)}`}</td>
-  <td class="wrap">${sv('contact',esc(r.email))}<br>${sv('contact',`<small class="muted">${esc(r.phoneNumber)}</small>`)}</td>
-  <td class="wrap">${sv('card',`${esc(brandOf(r)||'card')} ${mask(r.card.number)}<br><small class="muted">${esc(r.card.expiration||'')}</small>`)}</td><td>${flag(r.selected)}</td>
-  <td style="white-space:normal;min-width:130px"><button class="b" onclick="profDlg(${q(p.id)})">Edit</button>${p.group_id?'':` <button class="b" onclick="jigDlg(${q(p.id)})">Rejig</button>`}</td></tr>`;
-}
+async function profDup(id){const p=data.prof.find(x=>x.id==id);if(!p)return;const rec=JSON.parse(JSON.stringify(p.rec));rec.id='';rec.name=rec.name+' copy';rec.selected=false;const r=await api('vprofiles/save',{site:p.site,rec});if(r.error)return toast(r.error,true);toast('Duplicated');load()}
+async function profDelOne(id){if(confirm('Delete this profile? (Rejigged copies of it go too.)')){await api('vprofiles/delete',{ids:[id]});sel.prof.delete(id);load()}}
+function profEditAll(){massEditDlg();const e=$('#mesite');if(e)e.value=VP.site}
 function vProf(){
-  const t=filter.toLowerCase(),all=data.prof;
-  let rows=all.filter(p=>{const s=p.rec.shipping||{},b=p.rec.billing||{};return(!VP.site||p.site==VP.site)&&(!t||(p.site+p.rec.name+p.rec.email+s.addressLine1+s.addressLine2+s.city+s.state+s.zipCode+s.firstName+s.lastName+b.addressLine1+b.city).toLowerCase().includes(t))});
-  const key={name:p=>p.rec.name,city:p=>p.rec.shipping.city,state:p=>p.rec.shipping.state,zip:p=>p.rec.shipping.zipCode,site:p=>p.site}[VP.sort]||(p=>p.rec.name);
+  const all=data.prof,site=curSite('prof',all),t=filter.toLowerCase();
+  const grp=all.filter(p=>p.site==site);
+  let rows=grp.filter(p=>{const s=p.rec.shipping||{},b=p.rec.billing||{};return !t||(p.rec.name+p.rec.email+p.rec.phoneNumber+s.addressLine1+s.addressLine2+s.city+s.state+s.zipCode+s.firstName+s.lastName+b.addressLine1+b.city).toLowerCase().includes(t)});
+  const key={name:p=>p.rec.name,city:p=>p.rec.shipping.city,state:p=>p.rec.shipping.state,zip:p=>p.rec.shipping.zipCode}[VP.sort]||(p=>p.rec.name);
   rows=rows.slice().sort((a,b)=>String(key(a)||'').localeCompare(String(key(b)||''),undefined,{numeric:true,sensitivity:'base'}));
-  const size=VP.view=='cards'?24:50;if(VP.page*size>=rows.length)VP.page=0;const total=rows.length;const pageRows=rows.slice(VP.page*size,(VP.page+1)*size);
-  const inScope=all.filter(p=>!VP.site||p.site==VP.site);
-  const tg=(v,l)=>`<button class="b ${VP.view==v?'p':''}" onclick="VP.view='${v}';VP.page=0;render()">${l}</button>`;
-  const body=!all.length?'<div class="panel">No profiles yet. Use “Import Valor file” to load your profiles file.</div>':!total?'<div class="panel muted">No profiles match.</div>':
-    VP.view=='cards'?`<div class="pgrid">${pageRows.map(profCard).join('')}</div>`:
-    tbl(`<th><input type="checkbox" onclick="selAll('prof',${q(pageRows.map(p=>p.id))},this.checked)"></th><th>Profile</th><th>Shipping address</th><th>Billing address</th><th>Contact</th><th>Card</th><th>Valor</th><th></th>`,pageRows.map(profRow).join(''),'');
-  return `${privBar()}<div class="vlayout">${rail('prof',all.map(p=>p.site),VP.site)}<div class="vmain">
-  <div class="tiles">${tile('Profiles',inScope.filter(p=>!p.group_id).length)}${tile('Rejigged copies',inScope.filter(p=>p.group_id).length)}${tile('Selected in Valor',inScope.filter(p=>p.rec.selected).length)}${tile('Billing differs',inScope.filter(p=>!p.rec.billingSameAsShipping).length)}</div>
-  <div class="bar">${f()}<select onchange="VP.sort=this.value;VP.page=0;render()" title="Sort">${[['name','Sort: name'],['city','Sort: city'],['state','Sort: state'],['zip','Sort: ZIP'],['site','Sort: site']].map(([v,l])=>`<option value="${v}" ${VP.sort==v?'selected':''}>${l}</option>`).join('')}</select>
-  <span style="display:inline-flex">${tg('cards','Cards')}${tg('table','Table')}</span><span class="muted">${total} shown</span></div>
-  <div class="bar"><button class="b p" onclick="profDlg()">+ Add profile</button><button class="b" onclick="profImport()">Import Valor file</button><button class="b" onclick="profExport()">Export Valor file</button><button class="b" onclick="massEditDlg()">Mass edit…</button><button class="b" onclick="massEditDlg('Billing')">Mass edit billing…</button><button class="b" onclick="bulkAddrDlg()">Change addresses…</button></div>
-  ${selBar('prof')}${body}${pager(total,VP.page,size,'pgProf')}</div></div>${siteList()}`;
+  const size=100;if(VP.page*size>=rows.length)VP.page=0;const total=rows.length,page=rows.slice(VP.page*size,(VP.page+1)*size);
+  const ids=page.map(p=>p.id),orig=grp.filter(p=>!p.group_id).length;
+  return `${privBar()}<div class="vx" style="margin-top:10px">${groupList('prof',all,site,'Profile Groups')}<div>
+  <div class="top"><span class="gico">${esc(initial(site))}</span><div class="ttl">${esc(site)||'No group'}<span class="sub">(${grp.length-orig}) ${grp.length} Profiles${total!=grp.length?' · '+total+' shown':''}</span></div>
+   <button class="ib blue" title="Add profile" onclick="profDlg(null,${q(site)})">＋</button><button class="ib" title="Import" onclick="profImport()">⤓</button><button class="ib" title="Export" onclick="profExport()">⤒</button><button class="ib" title="Search / sort" onclick="VP.filt=!VP.filt;render()">🔍</button>
+   <span class="sp"></span><button class="vb" onclick="profEditAll()">✎ Edit All</button><button class="vb" onclick="massEditDlg('Billing');const e=$('#mesite');if(e)e.value=VP.site">Billing…</button><button class="vb" onclick="bulkAddrDlg()">Addresses…</button><button class="vb red" onclick="delGroupProf(${q(site)})">Delete All</button></div>
+  ${VP.filt||filter?`<div style="margin-top:10px;display:flex;gap:8px">${f()}<select onchange="VP.sort=this.value;VP.page=0;render()">${[['name','Sort: name'],['city','Sort: city'],['state','Sort: state'],['zip','Sort: ZIP']].map(([v,l])=>`<option value="${v}" ${VP.sort==v?'selected':''}>${l}</option>`).join('')}</select></div>`:''}${selBar('prof')}
+  <div class="tb"><div class="th prof-g"><input type="checkbox" ${ids.length&&ids.every(i=>sel.prof.has(i))?'checked':''} onclick="selAll('prof',${q(ids)},this.checked)"><span>Profile</span><span>Shipping Name &amp; Phone</span><span>Shipping Address</span><span>Same Billing</span><span>Card</span><span style="text-align:right">Actions</span></div>
+  ${page.map(p=>{const r=p.rec,sh=r.shipping||{},bi=r.billing||{},b=brandOf(r),num=String(r.card.number||'').replace(/\D/g,'');
+   return `<div class="tr prof-g ${sel.prof.has(p.id)?'sel':''}"><input type="checkbox" ${sel.prof.has(p.id)?'checked':''} onclick="togSel('prof',${q(p.id)},this.checked)">
+   <span><div class="cell1">${p.group_id?'↳ ':''}${esc(r.name)}${r.selected?' <span class="saved" title="Selected in Valor">●</span>':''}</div><div class="cell2">${sv('contact',esc(r.email))}</div></span>
+   <span><div class="cell1">${sv('addr',esc((sh.firstName+' '+sh.lastName).trim()))}</div><div class="cell2">${sv('contact',esc(r.phoneNumber))}</div></span>
+   <span><div class="cell1">${sv('addr',esc(sh.addressLine1||''))}</div><div class="cell2">${sv('addr',esc([sh.addressLine2,[sh.city,sh.state].filter(Boolean).join(', ')+(sh.zipCode?' '+sh.zipCode:'')].filter(Boolean).join(' · ')))}</div></span>
+   <span title="${r.billingSameAsShipping?'Billing is the same as shipping':'Different billing: '+esc([bi.addressLine1,bi.city,bi.state,bi.zipCode].filter(Boolean).join(', '))}"><span class="dot ${r.billingSameAsShipping?'':'no'}"></span></span>
+   <span>${sv('card',`${brandBadge(b)}<span style="display:inline-block;vertical-align:middle;line-height:1.15"><b>${esc(num.slice(-4)||'••••')}</b><br><span class="cell2">${esc(r.card.expiration||'')}</span></span>`)}</span>
+   <span class="acts"><button class="ib" title="Edit" onclick="profDlg(${q(p.id)})">✎</button>${p.group_id?'':`<button class="ib" title="Rejig into copies" onclick="jigDlg(${q(p.id)})">↻</button>`}<button class="ib" title="Duplicate" onclick="profDup(${q(p.id)})">⧉</button><button class="ib red" title="Delete" onclick="profDelOne(${q(p.id)})">🗑</button></span></div>`}).join('')||`<div class="empty">${all.length?'No profiles match.':'No profiles yet. Use ＋ to import your Valor profiles file.'}</div>`}
+  ${pgr(total,VP.page,size,'pgProf')}</div></div></div>${siteList()}`;
 }
 const BLANK={name:'',email:'',phoneNumber:'',billingSameAsShipping:true,oneCheckout:false,quickTask:false,card:{holder:'',number:'',expiration:'',cvv:'',type:''},
   shipping:{firstName:'',lastName:'',addressLine1:'',addressLine2:'',city:'',countryName:'United States',countryCode:'US',state:'',zipCode:''},
   billing:{firstName:'',lastName:'',addressLine1:'',addressLine2:'',city:'',countryName:'United States',countryCode:'US',state:'',zipCode:''},id:'',totalSpent:0,selected:false};
 const addrFields=(k,rec)=>fld(k+'.firstName','First name',rec)+fld(k+'.lastName','Last name',rec)+fld(k+'.addressLine1','Address line 1',rec)+fld(k+'.addressLine2','Address line 2',rec)+fld(k+'.city','City',rec)+fld(k+'.state','State',rec)+fld(k+'.zipCode','ZIP / postal code',rec)+fld(k+'.countryCode','Country code (US)',rec)+fld(k+'.countryName','Country name',rec);
-function profDlg(id){
+function profDlg(id,defSite){
   const p=id?data.prof.find(x=>x.id==id):null;
   const rec=p?p.rec:JSON.parse(JSON.stringify(BLANK));
   const hasExtra=['personalCustomsCode','pinCode','idNumber','birthday'].some(k=>k in rec);
-  dlg(`<div class="grid2"><div><label>Website</label><input id="profsite" list="sites" value="${esc(p?p.site:'')}" required></div>`+fld('name','Profile name',rec,'text','required')+fld('email','Email',rec)+fld('phoneNumber','Phone number',rec)+`</div>
+  dlg(`<div class="grid2"><div><label>Website</label><input id="profsite" list="sites" value="${esc(p?p.site:(defSite||''))}" required></div>`+fld('name','Profile name',rec,'text','required')+fld('email','Email',rec)+fld('phoneNumber','Phone number',rec)+`</div>
   <div style="margin:8px 0">${cb('billingSameAsShipping','Billing same as shipping',rec)}${cb('oneCheckout','One checkout',rec)}${cb('quickTask','Quick task',rec)}${cb('selected','Selected in Valor',rec)}</div>
   <fieldset><legend>Card</legend><div class="grid2">${fld('card.holder','Name on card',rec)}${fld('card.number','Card number',rec,'text','autocomplete=off')}${fld('card.expiration','Expiration (MM/YY)',rec)}${fld('card.cvv','CVV',rec,'text','autocomplete=off')}
   <div><label>Card type</label><select data-p="card.type">${['','visa','mastercard','amex','discover'].map(t=>`<option value="${t}" ${rec.card.type==t?'selected':''}>${t||'(auto-detect)'}</option>`).join('')}</select></div>${fld('totalSpent','Total spent',rec,'number','step=0.01')}</div></fieldset>
