@@ -157,6 +157,12 @@ def run():
 
 def api_smoke():
     import server
+    import static_embedded
+    # the installed app serves this copy of the page (no static folder is bundled), so it must match and be sendable
+    page = open(os.path.join(HERE, "static", "index.html"), encoding="utf-8").read() if os.path.isfile(os.path.join(HERE, "static", "index.html")) else None
+    check("embedded page sendable", bool(static_embedded.HTML.encode("utf-8")))
+    check("embedded page up to date", page is None or page == static_embedded.HTML)
+    server.STATIC = os.path.join(HERE, "no-static-folder")  # serve exactly like the installed app
     srv, port = server.make_server(8900)
     threading.Thread(target=srv.serve_forever, daemon=True).start()
 
@@ -183,6 +189,8 @@ def api_smoke():
     check("import receipts", code == 200 and body["added"] == 1)
     code, body = call("scan", {"mode": "receive", "sku": "PK-7777"})
     check("scan api", code == 200 and body["created"])
+    page = urllib.request.urlopen(f"http://127.0.0.1:{port}/").read().decode("utf-8")
+    check("page served from embedded copy", page.startswith("<!doctype html>") and "Valor" in page)
     code, _ = call("nonexistent")
     check("404", code == 404)
     srv.shutdown()
