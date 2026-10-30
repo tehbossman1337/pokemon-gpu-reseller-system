@@ -151,10 +151,12 @@ const q=s=>JSON.stringify(s).replace(/"/g,'&quot;');
 function toast(msg,bad){const t=$('#toast');t.textContent=msg;t.className=bad?'bad':'';try{t.hidePopover()}catch(e){}
   try{t.showPopover()}catch(e){t.style.display='block'}clearTimeout(toast.t);toast.t=setTimeout(()=>{try{t.hidePopover()}catch(e){}t.style.display=''},bad?6000:3500)}
 const NAV=[['Overview',[['dashboard','Dashboard']]],
- ['Business',[['inventory','Inventory'],['sales','Sales'],['receipts','Receipts'],['scan','Scan Station'],['tax','Tax Summary']]],
+ ['Business',[['inventory','Inventory'],['sales','Sales & Tax']]],
  ['Orders',[['orders','Orders'],['packages','Packages'],['inbox','Inbox'],['limits','Purchase Limits']]],
  ['Valor AIO',[['accounts','Accounts'],['profiles','Profiles']]],
  ['App',[['settings','Settings'],['updates','Updates'],['reference','Visual Reference']]]];
+const GROUPS={inventory:[['inventory','Stock'],['scan','Scan Station']],sales:[['sales','Sales'],['receipts','Receipts'],['tax','Tax Summary']]};
+const subTabs=()=>{const g=Object.values(GROUPS).find(x=>x.some(([k])=>k==tab));return g?`<div class="chips" id="subtabs" style="margin-bottom:12px">${g.map(([k,l])=>`<button class="b ${k==tab?'on':''}" onclick="go('${k}')">${l}</button>`).join('')}</div>`:''};
 const TITLES={packages:'Package tracker',dashboard:'Dashboard',inventory:'Inventory',sales:'Sales',receipts:'Receipts',scan:'Scan Station',tax:'Tax Summary',orders:'Orders',inbox:'Inbox',limits:'Purchase Limits',review:'Review queue',accounts:'Valor Accounts',profiles:'Valor Profiles',settings:'Settings',updates:'Updates',reference:'Visual Reference'};
 const SITES=['Pokemon Center','Target','Walmart','Best Buy','GameStop','Costco',"Sam's Club"];
 let DET={kind:'',id:0},OV={view:'tiles',f:'all'},tab='dashboard',data={},filter='',openSites={},L={},TS={settings:{},fees:[],currencies:[]},DASH={},TAX=null,SCANS=[],SC={mode:'receive',sold_by:'',msg:'',bad:false};
@@ -169,7 +171,7 @@ async function load(){
   render();
 }
 function nav(){
-  $('#nav').innerHTML=NAV.map(([g,ts])=>`<h6>${g}</h6>`+ts.map(([k,l])=>`<button class="${k==tab?'on':''}" onclick="go('${k}')">${l}${k=='packages'&&data.pkg&&data.pkg.items&&data.pkg.items.filter(p=>p.active).length?`<span class="badge">${data.pkg.items.filter(p=>p.active).length}</span>`:''}${k=='review'&&data.rev&&data.rev.length?`<span class="badge">${data.rev.length}</span>`:''}${k=='updates'&&UPD.info&&UPD.info.ok&&UPD.info.update?'<span class="badge">new</span>':''}</button>`).join('')).join('');
+  $('#nav').innerHTML=NAV.map(([g,ts])=>`<h6>${g}</h6>`+ts.map(([k,l])=>`<button class="${k==tab||(GROUPS[k]||[]).some(x=>x[0]==tab)?'on':''}" onclick="go('${k}')">${l}${k=='packages'&&data.pkg&&data.pkg.items&&data.pkg.items.filter(p=>p.active).length?`<span class="badge">${data.pkg.items.filter(p=>p.active).length}</span>`:''}${k=='review'&&data.rev&&data.rev.length?`<span class="badge">${data.rev.length}</span>`:''}${k=='updates'&&UPD.info&&UPD.info.ok&&UPD.info.update?'<span class="badge">new</span>':''}</button>`).join('')).join('');
   $('#title').textContent=TITLES[tab]||'';
 }
 function go(t){tab=t;filter='';DET={kind:'',id:0};if(t=='tax')TAX=null;render();$('main').scrollTop=0}
@@ -179,7 +181,7 @@ function render(){
   nav();syncVis();
   const v={packages:()=>DET.kind=='pkg'?vPkgDetail():vPkg(),dashboard:vDash,inventory:vInv,sales:vSal,receipts:vRecs,scan:vScan,tax:vTax,orders:()=>DET.kind=='order'?vOrdDetail():vOrd(),inbox:vInbox,limits:vLim,review:vRev,accounts:vAcc,profiles:vProf,settings:vSet,updates:vUpd,reference:vRef}[tab];
   const keep=document.activeElement&&document.activeElement.id==='flt'?document.activeElement.selectionStart:null;
-  $('#view').innerHTML=v();
+  $('#view').innerHTML=subTabs()+v();
   if(keep!==null){const e=$('#flt');if(e){e.focus();e.setSelectionRange(keep,keep)}}
   if(tab=='scan'){const e=$('#scansku');if(e&&!$('#dlg').open)e.focus()}
   if(tab=='tax'&&!TAX)taxLoad();
